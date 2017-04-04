@@ -1,0 +1,15 @@
+[Unit]
+Description=BigClown gateway between Base unit connected via USB and MQTT broker
+After=network.target mosquitto.service dev-stm32ACM0.device
+BindsTo=dev-stm32ACM0.device
+Requires=mosquitto.service
+Requisite=dev-stm32ACM0.device
+
+[Service]
+ExecStart=/usr/bin/bc-gateway -d /dev/stm32ACM0
+User=bigclown
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=dev-stm32ACM0.device
