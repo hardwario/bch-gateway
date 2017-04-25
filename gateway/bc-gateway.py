@@ -11,7 +11,7 @@ Options:
   -d DEVICE --device=DEVICE    Path to Base unit's device node (default is /dev/ttyACM0).
   -h HOST --host=HOST          MQTT host to connect to (default is localhost).
   -p PORT --port=PORT          MQTT port to connect to (default is 1883).
-  -t TOPIC --base-topic=TOPIC  Base MQTT topic (default is nodes).
+  -t TOPIC --base-topic=TOPIC  Base MQTT topic (default is node).
   -W --wait                    Wait on connect or reconect.
   --list                       Show list of available devices
   -v --version                 Print version.
@@ -46,7 +46,7 @@ LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 def mqtt_on_connect(client, userdata, flags, rc):
     log.info('Connected to MQTT broker with (code %s)', rc)
 
-    client.subscribe(userdata['base_topic'] + '+/+/+/+/+')
+    client.subscribe(userdata['base_topic'] + '+/+/+/+')
 
 
 def mqtt_on_message(client, userdata, msg):
