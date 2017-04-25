@@ -1,0 +1,11 @@
+<%# We need to run systemctl with --no-block option. -%>
+<%# Based on https://github.com/jordansissel/fpm/blob/master/templates/deb/postinst_upgrade.sh.erb -%>
+
+<% if attributes[:deb_systemd] -%>
+systemctl --system daemon-reload >/dev/null || true
+systemctl enable <%= attributes[:deb_systemd] %> >/dev/null || true
+systemctl start --no-block <%= attributes[:deb_systemd] %> >/dev/null || true
+<% end -%>
+
+<%# XXX: Hack to avoid running default systemctl commands in postinst_upgrade.sh.erb -%>
+return 0
