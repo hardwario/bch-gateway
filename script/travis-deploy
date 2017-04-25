@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+
+# Relative path to a directory where to look for .deb files.
+DIST_DIR='dist'
+DEPLOY_REMOTE='deployer@repo.bigclown.com'
+: ${DEBIAN_RELEASE:="jessie"}
+
+cd "$(dirname "$0")/.."
+
+if [ -z "$(ls "$DIST_DIR"/*.deb)" ]; then
+	echo "ERROR: Directory $DIST_DIR does not contain any *.deb files!" >&2
+	exit 1
+fi
+
+echo '> Decrypting .deploykey' >&2
+openssl aes-256-cbc -K $encrypted_8a2d0a42fabd_key -iv $encrypted_8a2d0a42fabd_iv -in .deploykey.enc -out .deploykey -d
+chmod 600 .deploykey
+
+echo '> Uploading deb packages to repository' >&2
+rsync --verbose \
+	--ignore-existing \
+	--chmod og=rw \
+	--rsh='ssh -i .deploykey -o StrictHostKeyChecking=no' \
+	"$DIST_DIR"/*.deb \
+	"$DEPLOY_REMOTE":/var/lib/freight/apt/$DEBIAN_RELEASE/
+
+echo '> Rebuilding package repository' >&2
+# Note: GPG_PASS is encrypted in .travis.yml
+ssh -i .deploykey "$DEPLOY_REMOTE" GPG_PASS="$GPG_PASS" rebuild-repo

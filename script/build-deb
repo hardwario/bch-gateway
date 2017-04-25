@@ -1,0 +1,127 @@
+#!/bin/sh
+# vim: set ts=4:
+#
+# Builds debian packages.
+#
+# Environment variables:
+# 	PKG_VERSION : Version of the resulting packages in Debian format (!).
+# 	              If not specified, then it's determined from git base on tags.
+# 	BUILD_DIR   : Directory for temporary build files (defaults to ./build).
+# 	TARGET_DIR  : Directory where to put built .deb packages.
+set -eu
+
+cd "$(dirname "$0")/.."
+. script/utils.sh
+
+
+PKG_MAINTAINER='BigClown Labs <support@bigclown.com>'
+PKG_HOMEPAGE='https://github.com/bigclownlabs/bch-gateway'
+PKG_LICENSE='MIT'
+
+LIB_DIR='/usr/lib/bigclown'
+GATEWAY_DEST_DIR="$LIB_DIR/gateway"
+
+if [ -z "${PKG_VERSION:-}" ]; then
+	PKG_VERSION="$(pkgver_from_git)" ||
+		die '$PKG_VERSION is not set and could not determine version from git!'
+fi
+
+
+_fpm() {
+	# Unquote arguments that we have quoted in order to preserve whitespaces
+	# (used in --depends).
+	eval "set -- $@"
+
+	fpm --input-type dir \
+		--output-type deb \
+		--package "$TARGET_DIR" \
+		--maintainer "$PKG_MAINTAINER" \
+		--vendor "$PKG_MAINTAINER" \
+		--url "$PKG_HOMEPAGE" \
+		--license "$PKG_LICENSE" \
+		--version "$PKG_VERSION" \
+		--architecture all \
+		--template-scripts \
+		--after-install "$BASE_DIR"/debian/after-install.erb \
+		--after-upgrade "$BASE_DIR"/debian/after-upgrade.erb \
+		"$@"
+}
+
+# Parses debian dependencies from requirements.txt and convert them into fpm's
+# arguments (i.e. --depends 'foo >= 1.0'). Values are quoted to preserve
+# whitespaces, so the output must be evaled before passing to fpm!
+#
+# $1: Path to directory with requirements.txt (default is .).
+python_depends() {
+	local requirements_file="${1:-.}/requirements.txt"
+
+	# XXX: Remove second regexp and "eval set" in _fpm after
+	# https://github.com/jordansissel/fpm/pull/1261 is merged and released.
+	sed -En \
+		-e 's/.*# deb:([^ ]+).*/\1/' \
+		-e 's/([<>=]+)/ \1 /' \
+		-e "s/^(.*)$/--depends '\1'/p" \
+		"$requirements_file"
+}
+
+replace_placeholders() {
+	# Tilde as a suffix separator is used only for Debian packages...
+	local ver="$(echo $PKG_VERSION | tr '~' '-')"
+
+	sed_inplace "s/@@VERSION@@/$ver/g" "$1"
+}
+
+build_paho_mqtt() {
+	einfo 'Building debian package python3-paho-mqtt'
+
+	fpm --input-type python \
+		--output-type deb \
+		--package "$TARGET_DIR" \
+		--maintainer "$PKG_MAINTAINER" \
+		--exclude '**/__pycache__' \
+		--python-bin python3 \
+		--python-package-name-prefix python3 \
+		--python-install-lib /usr/lib/python3/dist-packages \
+		paho-mqtt
+}
+
+build_gateway() {
+	einfo 'Building debian package bc-gateway'
+
+	cp -r gateway "$BUILD_DIR"/
+	cd "$BUILD_DIR"/gateway
+
+	# Prepare symlink
+	local tmp_dir="$(mktemp -d)"
+	ln -s "$GATEWAY_DEST_DIR"/bc-gateway.py "$tmp_dir"/bc-gateway
+
+	replace_placeholders *.py
+	chmod +x bc-gateway.py
+
+	_fpm --name bc-gateway \
+		--depends bc-common \
+		$(python_depends) \
+		--deb-systemd bc-gateway.service \
+		bc-gateway.py="$GATEWAY_DEST_DIR/bc-gateway.py" \
+		"$tmp_dir/bc-gateway"=/usr/bin
+
+	rm -Rf "$tmp_dir"
+	cd - >/dev/null
+}
+
+#----------  M a i n  ----------#
+
+if ! has fpm; then
+	die 'fpm not found!' \
+		'TIP: Read https://fpm.readthedocs.io/en/latest/installing.html for instructions.'
+fi
+
+rm -rf "$BUILD_DIR"
+rm -rf "$TARGET_DIR"/*.deb
+mkdir -p "$BUILD_DIR" "$TARGET_DIR"
+
+for module in gateway paho_mqtt; do
+	eval "build_$module"
+done
+
+rm -Rf "$BUILD_DIR"
