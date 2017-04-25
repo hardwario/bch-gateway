@@ -1,0 +1,13 @@
+sudo: false
+language: generic
+script:
+- "/bin/true"
+env:
+  global:
+    secure: FbTMWRXO/vKLqSoxOEWd0Cx2IpiBYN7rbS4tcR1nafF9GWCQc1F6qC00foUrYGNd8M6rFOkon1UO+7+GEsDUZvtwCLmzVkHxMo07XMU6DxzvG6rBSnpYuBtCgQ0r7/12YR3Efz8ACU1ihlgGMVxi8ziuCH8kRKFqfH+F6RtiOYj3zeNGFnYxUl+Eu7q07VjOqqATFO6q75l5JmJ/pDQeFpgAkvvcenzaJ3EYueLNl1JYlWqPZBLYBBfxbzcUsa9uYuQCk169ljn4Peg87F0JXHSjWQXZTqiBUq60k/uZArHrZ7/e9hl9yk13789aajfdWSdwVXns3sK7Y7E515g0hqAi6ANPfkMtuJDtXBg5Kt+FyxFR2RtnyzKLjfIU8UyD9IaoqsEpqFzO/C4uCVGIT1MVvkw9U1pJnkKsHXnImeCQwWgCG4uM0q2BsB4anWbytYMdkR+faI3H0jLJUWXGBR+7dKekAXSzbtjYh9VRlu6746+eCfp40ldRfSZNJVQYeT7oXXMgF3OqyRN4fyTpTtZlK2MhGiTTpf4F6QMSNRHy4qhJQ8ET4A/I3uM8/0XXF4Zz/YvPqGBHuakl+mKZqn+miLoaFXTd1IupgbEJ4QE/uUeVo/slVlFQMAbrInLz9WQQ41cNQWbmt9AzyOFsUiR9n9n47kpknwMb6BgvcDI=
+deploy:
+  provider: script
+  script: script/travis-deploy
+  skip_cleanup: true
+  on:
+    tags: true
