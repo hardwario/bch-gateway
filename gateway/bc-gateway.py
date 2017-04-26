@@ -46,7 +46,7 @@ LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 def mqtt_on_connect(client, userdata, flags, rc):
     log.info('Connected to MQTT broker with (code %s)', rc)
 
-    client.subscribe(userdata['base_topic'] + '+/+/+/+')
+    client.subscribe(userdata['base_topic'] + '+/+/+/+/+')
 
 
 def mqtt_on_message(client, userdata, msg):
