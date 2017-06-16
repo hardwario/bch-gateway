@@ -44,9 +44,11 @@ def run():
 
     ser = serial.Serial(config['device'], timeout=3.0)
 
+    logging.info('Opened serial port: %s', config['device'])
+
     if platform.system() == 'Linux':
         fcntl.flock(ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        logging.debug("flock %d" % ser.fileno())
+        logging.debug('Exlusive lock on file descriptior: %d' % ser.fileno())
 
     ser.write(b'\n')
 
@@ -75,7 +77,7 @@ def run():
 
 
 def main():
-    argp = argparse.ArgumentParser(description='BigClown gateway between USB and MQTT broker.')
+    argp = argparse.ArgumentParser(description='BigClown gateway between USB serial port and MQTT broker')
     argp.add_argument('-c', '--config', help='path to configuration file (YAML format)')
     argp.add_argument('-d', '--device', help='path to gateway serial port (default is /dev/ttyACM0)')
     argp.add_argument('-H', '--mqtt-host', help='MQTT host to connect to (default is localhost)')
@@ -84,6 +86,7 @@ def main():
     argp.add_argument('-W', '--wait', help='wait on connect or reconnect', action='store_true')
     argp.add_argument('-l', '--list', help='show list of available devices and exit', action='store_true')
     argp.add_argument('-D', '--debug', help='print debug messages', action='store_true')
+    argp.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
     args = argp.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format=LOG_FORMAT)
