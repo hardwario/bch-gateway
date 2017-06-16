@@ -1,0 +1,5 @@
+device: /dev/ttyACM0
+mqtt:
+  host: localhost
+  port: 1883
+  topic: node

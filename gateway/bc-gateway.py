@@ -1,125 +1,126 @@
 #!/usr/bin/env python3
 
-"""
-BigClown gateway between USB and MQTT broker.
-
-Usage:
-  bc-gateway [options]
-
-Options:
-  -D --debug                   Print debug messages.
-  -d DEVICE --device=DEVICE    Path to Base unit's device node (default is /dev/ttyACM0).
-  -h HOST --host=HOST          MQTT host to connect to (default is localhost).
-  -p PORT --port=PORT          MQTT port to connect to (default is 1883).
-  -t TOPIC --base-topic=TOPIC  Base MQTT topic (default is node).
-  -W --wait                    Wait on connect or reconect.
-  --list                       Show list of available devices
-  -v --version                 Print version.
-  --help                       Show this message.
-"""
-
 import os
 import sys
-from logging import DEBUG, INFO
-import logging as log
+import time
+import logging
+import argparse
 import json
 import platform
-import time
-from docopt import docopt
-import paho.mqtt.client as mqtt
-from serial import Serial, SerialException
-from serial.tools import list_ports
+import yaml
+import serial
+import paho.mqtt.client
 
 if platform.system() == 'Linux':
     import fcntl
 
 __version__ = '@@VERSION@@'
 
-DEFAULT_MQTT_HOST = 'localhost'
-DEFAULT_MQTT_PORT = 1883
-DEFAULT_MQTT_TOPIC = 'node'
-DEFAULT_DEVICE = '/dev/ttyACM0'
+config = {
+    'device': '/dev/ttyACM0',
+    'mqtt': {
+        'host': 'localhost',
+        'port': 1883,
+        'topic': 'node'
+    }
+}
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
 
-def mqtt_on_connect(client, userdata, flags, rc):
-    log.info('Connected to MQTT broker with (code %s)', rc)
-
+def mqtt_on_connect(client, userdata, rc):
+    logging.info('Connected to MQTT broker with code %s', rc)
     client.subscribe(userdata['base_topic'] + '+/+/+/+/+')
 
 
-def mqtt_on_message(client, userdata, msg):
+def mqtt_on_message(userdata, msg):
     subtopic = msg.topic[len(userdata['base_topic']):]
     payload = msg.payload if msg.payload else b'null'
     userdata['serial'].write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
 
 
-def run(opts):
-    base_topic = opts.get('base_topic', DEFAULT_MQTT_TOPIC).rstrip('/') + '/'
+def run():
+    base_topic = config['mqtt']['topic'].rstrip('/') + '/'
 
-    serial = Serial(opts.get('device', DEFAULT_DEVICE), timeout=3.0)
+    ser = serial.Serial(config['device'], timeout=3.0)
 
     if platform.system() == 'Linux':
-        fcntl.flock(serial.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        log.debug("flock %d" % serial.fileno())
+        fcntl.flock(ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        logging.debug("flock %d" % ser.fileno())
 
-    serial.write(b'\n')
+    ser.write(b'\n')
 
-    mqttc = mqtt.Client(userdata={'serial': serial, 'base_topic': base_topic})
+    mqttc = paho.mqtt.client.Client(userdata={'serial': ser, 'base_topic': base_topic})
     mqttc.on_connect = mqtt_on_connect
     mqttc.on_message = mqtt_on_message
-
-    mqttc.connect(opts.get('host', DEFAULT_MQTT_HOST),
-                  opts.get('port', DEFAULT_MQTT_PORT),
-                  keepalive=10)
+    mqttc.connect(config['mqtt']['host'], config['mqtt']['port'], keepalive=10)
     mqttc.loop_start()
 
     while True:
         try:
-            line = serial.readline()
-        except SerialException as e:
-            serial.close()
+            line = ser.readline()
+        except serial.SerialException:
+            ser.close()
             raise
-
         if line:
-            log.debug(line)
+            logging.debug(line)
             try:
                 talk = json.loads(line.decode())
+            except Exception:
+                logging.error('Invalid JSON message received from serial port: %s', line)
+            try:
                 mqttc.publish(base_topic + talk[0], json.dumps(talk[1]), qos=1)
-            except Exception as e:
-                log.error('Received malformed message: %s', line)
-
-
-def loop(opts):
-    try:
-        run(opts)
-    except KeyboardInterrupt:
-        sys.exit(0)
-    except Exception as e:
-        log.error(e)
-        if os.getenv('DEBUG', False):
-            raise e
+            except Exception:
+                logging.error('Failed to publish MQTT message: %s', line)
 
 
 def main():
-    arguments = docopt(__doc__, version='bc-gateway %s' % __version__)
-    opts = {k.lstrip('-').replace('-', '_'): v
-            for k, v in arguments.items() if v}
+    argp = argparse.ArgumentParser(description='BigClown gateway between USB and MQTT broker.')
+    argp.add_argument('-c', '--config', help='path to configuration file (YAML format)')
+    argp.add_argument('-d', '--device', help='path to gateway serial port (default is /dev/ttyACM0)')
+    argp.add_argument('-H', '--mqtt-host', help='MQTT host to connect to (default is localhost)')
+    argp.add_argument('-P', '--mqtt-port', help='MQTT port to connect to (default is 1883)')
+    argp.add_argument('-t', '--mqtt-topic', help='base MQTT topic (default is node)')
+    argp.add_argument('-W', '--wait', help='wait on connect or reconnect', action='store_true')
+    argp.add_argument('-l', '--list', help='show list of available devices and exit', action='store_true')
+    argp.add_argument('-D', '--debug', help='print debug messages', action='store_true')
+    args = argp.parse_args()
 
-    log.basicConfig(level=DEBUG if opts.get('debug') else INFO, format=LOG_FORMAT)
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format=LOG_FORMAT)
 
-    if opts.get('list'):
-        for p in list_ports.comports():
+    if args.config:
+        try:
+            with open(args.config, 'r') as f:
+                config.update(yaml.load(f))
+        except Exception:
+            logging.error('Failed opening configuration file')
+            sys.exit(1)
+
+    config['device'] = args.device if args.device else config['device']
+    config['mqtt']['host'] = args.mqtt_host if args.mqtt_host else config['mqtt']['host']
+    config['mqtt']['port'] = args.mqtt_port if args.mqtt_port else config['mqtt']['port']
+    config['mqtt']['topic'] = args.mqtt_topic if args.mqtt_topic else config['mqtt']['topic']
+
+    if args.list:
+        for p in serial.tools.list_ports.comports():
             print(p)
         return
 
-    loop(opts)
-
-    while opts.get('wait'):
-        loop(opts)
-        time.sleep(3)
+    while True:
+        try:
+            run()
+        except Exception as e:
+            logging.error(e)
+            if os.getenv('DEBUG', False):
+                raise e
+        if args.wait:
+            time.sleep(3)
+        else:
+            break
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
