@@ -63,7 +63,7 @@ def run():
     mqttc = paho.mqtt.client.Client(userdata={'serial': ser, 'base_topic': base_topic})
     mqttc.on_connect = mqtt_on_connect
     mqttc.on_message = mqtt_on_message
-    mqttc.connect(config['mqtt']['host'], config['mqtt']['port'], keepalive=10)
+    mqttc.connect(config['mqtt']['host'], int(config['mqtt']['port']), keepalive=10)
     mqttc.loop_start()
 
     while True:
