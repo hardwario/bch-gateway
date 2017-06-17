@@ -9,6 +9,7 @@ import json
 import platform
 import yaml
 import serial
+import serial.tools.list_ports
 import paho.mqtt.client
 
 if platform.system() == 'Linux':
@@ -27,17 +28,14 @@ config = {
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
-
-def mqtt_on_connect(client, userdata, rc):
+def mqtt_on_connect(client, userdata, flags, rc):
     logging.info('Connected to MQTT broker with code %s', rc)
     client.subscribe(userdata['base_topic'] + '+/+/+/+/+')
 
-
-def mqtt_on_message(userdata, msg):
-    subtopic = msg.topic[len(userdata['base_topic']):]
-    payload = msg.payload if msg.payload else b'null'
+def mqtt_on_message(client, userdata, message):
+    subtopic = message.topic[len(userdata['base_topic']):]
+    payload = message.payload if msg.payload else b'null'
     userdata['serial'].write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
-
 
 def run():
     base_topic = config['mqtt']['topic'].rstrip('/') + '/'
@@ -48,7 +46,7 @@ def run():
 
     if platform.system() == 'Linux':
         fcntl.flock(ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        logging.debug('Exlusive lock on file descriptior: %d' % ser.fileno())
+        logging.debug('Exclusive lock on file descriptor: %d' % ser.fileno())
 
     ser.write(b'\n')
 
@@ -74,7 +72,6 @@ def run():
                 mqttc.publish(base_topic + talk[0], json.dumps(talk[1]), qos=1)
             except Exception:
                 logging.error('Failed to publish MQTT message: %s', line)
-
 
 def main():
     argp = argparse.ArgumentParser(description='BigClown gateway between USB serial port and MQTT broker')
@@ -105,9 +102,13 @@ def main():
     config['mqtt']['topic'] = args.mqtt_topic if args.mqtt_topic else config['mqtt']['topic']
 
     if args.list:
-        for p in serial.tools.list_ports.comports():
-            print(p)
-        return
+        try:
+            for p in serial.tools.list_ports.comports():
+                print(p)
+            sys.exit(0)
+        except Exception:
+            logging.error('Failed listing available serial ports')
+            sys.exit(1)
 
     while True:
         try:
@@ -120,7 +121,6 @@ def main():
             time.sleep(3)
         else:
             break
-
 
 if __name__ == '__main__':
     try:
