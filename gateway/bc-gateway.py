@@ -28,14 +28,17 @@ config = {
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
+
 def mqtt_on_connect(client, userdata, flags, rc):
     logging.info('Connected to MQTT broker with code %s', rc)
     client.subscribe(userdata['base_topic'] + '+/+/+/+/+')
+
 
 def mqtt_on_message(client, userdata, message):
     subtopic = message.topic[len(userdata['base_topic']):]
     payload = message.payload if msg.payload else b'null'
     userdata['serial'].write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
+
 
 def run():
     base_topic = config['mqtt']['topic'].rstrip('/') + '/'
@@ -72,6 +75,7 @@ def run():
                 mqttc.publish(base_topic + talk[0], json.dumps(talk[1]), qos=1)
             except Exception:
                 logging.error('Failed to publish MQTT message: %s', line)
+
 
 def main():
     argp = argparse.ArgumentParser(description='BigClown gateway between USB serial port and MQTT broker')
