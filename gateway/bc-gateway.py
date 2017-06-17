@@ -30,19 +30,11 @@ config = {
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
 
-class FakeFloat(float):
-
-    def __init__(self, value):
-        self._value = value
-
-    def __repr__(self):
-        return str(self._value)
-
-
-def decimal_default(obj):
-    if isinstance(obj, decimal.Decimal):
-        return FakeFloat(obj)
-    raise TypeError
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return eval(str(obj))
+        return json.JSONEncoder.default(self, obj)
 
 
 def mqtt_on_connect(client, userdata, flags, rc):
@@ -88,7 +80,7 @@ def run():
             except Exception:
                 logging.error('Invalid JSON message received from serial port: %s', line)
             try:
-                mqttc.publish(base_topic + talk[0], json.dumps(talk[1], default=decimal_default), qos=1)
+                mqttc.publish(base_topic + talk[0], json.dumps(talk[1], cls=DecimalEncoder), qos=1)
             except Exception:
                 logging.error('Failed to publish MQTT message: %s', line)
 
