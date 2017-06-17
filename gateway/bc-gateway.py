@@ -7,6 +7,7 @@ import logging
 import argparse
 import json
 import platform
+import decimal
 import yaml
 import serial
 import serial.tools.list_ports
@@ -29,6 +30,21 @@ config = {
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
 
+class FakeFloat(float):
+
+    def __init__(self, value):
+        self._value = value
+
+    def __repr__(self):
+        return str(self._value)
+
+
+def decimal_default(obj):
+    if isinstance(obj, decimal.Decimal):
+        return FakeFloat(obj)
+    raise TypeError
+
+
 def mqtt_on_connect(client, userdata, flags, rc):
     logging.info('Connected to MQTT broker with code %s', rc)
     client.subscribe(userdata['base_topic'] + '+/+/+/+/+')
@@ -36,7 +52,7 @@ def mqtt_on_connect(client, userdata, flags, rc):
 
 def mqtt_on_message(client, userdata, message):
     subtopic = message.topic[len(userdata['base_topic']):]
-    payload = message.payload if msg.payload else b'null'
+    payload = message.payload if message.payload else b'null'
     userdata['serial'].write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
 
 
@@ -56,7 +72,7 @@ def run():
     mqttc = paho.mqtt.client.Client(userdata={'serial': ser, 'base_topic': base_topic})
     mqttc.on_connect = mqtt_on_connect
     mqttc.on_message = mqtt_on_message
-    mqttc.connect(config['mqtt']['host'], config['mqtt']['port'], keepalive=10)
+    mqttc.connect(config['mqtt']['host'], int(config['mqtt']['port']), keepalive=10)
     mqttc.loop_start()
 
     while True:
@@ -68,11 +84,11 @@ def run():
         if line:
             logging.debug(line)
             try:
-                talk = json.loads(line.decode())
+                talk = json.loads(line.decode(), parse_float=decimal.Decimal)
             except Exception:
                 logging.error('Invalid JSON message received from serial port: %s', line)
             try:
-                mqttc.publish(base_topic + talk[0], json.dumps(talk[1]), qos=1)
+                mqttc.publish(base_topic + talk[0], json.dumps(talk[1], default=decimal_default), qos=1)
             except Exception:
                 logging.error('Failed to publish MQTT message: %s', line)
 
