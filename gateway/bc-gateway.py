@@ -7,6 +7,7 @@ import logging
 import argparse
 import json
 import platform
+import decimal
 import yaml
 import serial
 import serial.tools.list_ports
@@ -40,6 +41,12 @@ def mqtt_on_message(client, userdata, message):
     userdata['serial'].write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
 
 
+def decimal_default(obj):
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    raise TypeError
+
+
 def run():
     base_topic = config['mqtt']['topic'].rstrip('/') + '/'
 
@@ -68,12 +75,13 @@ def run():
         if line:
             logging.debug(line)
             try:
-                talk = json.loads(line.decode())
+                talk = json.loads(line.decode(), parse_float=decimal.Decimal)
             except Exception:
                 logging.error('Invalid JSON message received from serial port: %s', line)
             try:
-                mqttc.publish(base_topic + talk[0], json.dumps(talk[1]), qos=1)
+                mqttc.publish(base_topic + talk[0], json.dumps(talk[1], default=decimal_default), qos=1)
             except Exception:
+                raise
                 logging.error('Failed to publish MQTT message: %s', line)
 
 
