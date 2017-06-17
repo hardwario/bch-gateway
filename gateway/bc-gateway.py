@@ -30,6 +30,21 @@ config = {
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
 
+class FakeFloat(float):
+
+    def __init__(self, value):
+        self._value = value
+
+    def __repr__(self):
+        return str(self._value)
+
+
+def decimal_default(obj):
+    if isinstance(obj, decimal.Decimal):
+        return FakeFloat(obj)
+    raise TypeError
+
+
 def mqtt_on_connect(client, userdata, flags, rc):
     logging.info('Connected to MQTT broker with code %s', rc)
     client.subscribe(userdata['base_topic'] + '+/+/+/+/+')
@@ -37,14 +52,8 @@ def mqtt_on_connect(client, userdata, flags, rc):
 
 def mqtt_on_message(client, userdata, message):
     subtopic = message.topic[len(userdata['base_topic']):]
-    payload = message.payload if msg.payload else b'null'
+    payload = message.payload if message.payload else b'null'
     userdata['serial'].write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
-
-
-def decimal_default(obj):
-    if isinstance(obj, decimal.Decimal):
-        return float(obj)
-    raise TypeError
 
 
 def run():
@@ -81,7 +90,6 @@ def run():
             try:
                 mqttc.publish(base_topic + talk[0], json.dumps(talk[1], default=decimal_default), qos=1)
             except Exception:
-                raise
                 logging.error('Failed to publish MQTT message: %s', line)
 
 
