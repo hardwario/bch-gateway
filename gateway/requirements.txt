@@ -1,4 +1,4 @@
 paho-mqtt>=1.0     # deb:python3-paho-mqtt>=1.0
 pyserial>=2.6      # deb:python3-serial>=2.6
-PyYAML>=3.12       # deb:python3-yaml>=3.12
-simplejson>=3.10.0 # deb:python3-simplejson>=3.10.0
+PyYAML>=3.11       # deb:python3-yaml>=3.11
+simplejson>=3.6.0 # deb:python3-simplejson>=3.6.0
