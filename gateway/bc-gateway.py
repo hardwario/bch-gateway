@@ -23,7 +23,12 @@ config = {
     'mqtt': {
         'host': 'localhost',
         'port': 1883,
-        'topic': 'node'
+        'topic': 'node',
+        'username': '',
+        'password': '',
+        'ca_certs': None,
+        'certfile': None,
+        'keyfile': None,
     }
 }
 
@@ -57,6 +62,9 @@ def run():
     mqttc = paho.mqtt.client.Client(userdata={'serial': ser, 'base_topic': base_topic})
     mqttc.on_connect = mqtt_on_connect
     mqttc.on_message = mqtt_on_message
+    mqttc.username_pw_set(config['mqtt']['username'], config['mqtt']['password'])
+    if config['mqtt']['ca_certs']:
+        mqttc.tls_set(config['mqtt']['ca_certs'], config['mqtt']['certfile'], config['mqtt']['keyfile'])
     mqttc.connect(config['mqtt']['host'], int(config['mqtt']['port']), keepalive=10)
     mqttc.loop_start()
 
@@ -87,6 +95,11 @@ def main():
     argp.add_argument('-t', '--mqtt-topic', help='base MQTT topic (default is node)')
     argp.add_argument('-W', '--wait', help='wait on connect or reconnect', action='store_true')
     argp.add_argument('-l', '--list', help='show list of available devices and exit', action='store_true')
+    argp.add_argument('--mqtt-username', help='MQTT username')
+    argp.add_argument('--mqtt-password', help='MQTT password')
+    argp.add_argument('--mqtt-ca-certs', help='MQTT ca certs')
+    argp.add_argument('--mqtt-certfile', help='MQTT certfile')
+    argp.add_argument('--mqtt-keyfile', help='MQTT keyfile')
     argp.add_argument('-D', '--debug', help='print debug messages', action='store_true')
     argp.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
     args = argp.parse_args()
@@ -97,6 +110,10 @@ def main():
         try:
             with open(args.config, 'r') as f:
                 config.update(yaml.load(f))
+                if not config['mqtt']['certfile']:
+                    config['mqtt']['certfile'] = None
+                if not config['mqtt']['keyfile']:
+                    config['mqtt']['keyfile'] = None
         except Exception:
             logging.error('Failed opening configuration file')
             sys.exit(1)
@@ -105,6 +122,11 @@ def main():
     config['mqtt']['host'] = args.mqtt_host if args.mqtt_host else config['mqtt']['host']
     config['mqtt']['port'] = args.mqtt_port if args.mqtt_port else config['mqtt']['port']
     config['mqtt']['topic'] = args.mqtt_topic if args.mqtt_topic else config['mqtt']['topic']
+    config['mqtt']['username'] = args.mqtt_username if args.mqtt_username else config['mqtt']['username']
+    config['mqtt']['password'] = args.mqtt_password if args.mqtt_password else config['mqtt']['password']
+    config['mqtt']['ca_certs'] = args.mqtt_ca_certs if args.mqtt_ca_certs else config['mqtt']['ca_certs']
+    config['mqtt']['certfile'] = args.mqtt_certfile if args.mqtt_certfile else config['mqtt']['certfile']
+    config['mqtt']['keyfile'] = args.mqtt_keyfile if args.mqtt_keyfile else config['mqtt']['keyfile']
 
     if args.list:
         try:
