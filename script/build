@@ -12,10 +12,14 @@ set -eu
 
 cd "$(dirname "$0")/.."
 . script/utils.sh
+. ./.envrc
 
+: ${BASE_DIR:="$(pwd)"}
+: ${BUILD_DIR:="$(pwd)/build"}
+: ${TARGET_DIR:="$(pwd)/dist"}
 
 PKG_MAINTAINER='BigClown Labs <support@bigclown.com>'
-PKG_HOMEPAGE='https://github.com/bigclownlabs/bch-gateway'
+PKG_HOMEPAGE='https://github.com/bigclownlabs/bch-usb-gateway'
 PKG_LICENSE='MIT'
 
 LIB_DIR='/usr/lib/bigclown'
@@ -71,6 +75,27 @@ replace_placeholders() {
 	sed_inplace "s/@@VERSION@@/$ver/g" "$1"
 }
 
+build_pip() {
+	einfo 'Building bc-gateway pip'
+
+    if [ -z "${TRAVIS_BUILD_DIR:-}" ]; then
+        echo "$BUILD_DIR"
+        mkdir -p "$BUILD_DIR"
+        cp -r bc_gateway "$BUILD_DIR"/bc_gateway
+        cp setup.py "$BUILD_DIR"/
+        cd "$BUILD_DIR"
+    fi
+
+    chmod +x bc_gateway/gateway.py
+
+	replace_placeholders bc_gateway/gateway.py
+    replace_placeholders setup.py
+
+    python3 setup.py sdist
+
+	cd - >/dev/null
+}
+
 build_paho_mqtt() {
 	einfo 'Building debian package python3-paho-mqtt'
 
@@ -85,24 +110,24 @@ build_paho_mqtt() {
 		paho-mqtt
 }
 
-build_gateway() {
+build_bc_gateway() {
 	einfo 'Building debian package bc-gateway'
 
-	cp -r gateway "$BUILD_DIR"/
-	cd "$BUILD_DIR"/gateway
+	cp -r bc_gateway "$BUILD_DIR"/
+	cd "$BUILD_DIR"/bc_gateway
 
 	# Prepare symlink
 	local tmp_dir="$(mktemp -d)"
 	ln -s "$GATEWAY_DEST_DIR"/bc-gateway.py "$tmp_dir"/bc-gateway
 
 	replace_placeholders *.py
-	chmod +x bc-gateway.py
+	chmod +x gateway.py
 
 	_fpm --name bc-gateway \
 		--depends bc-common \
 		$(python_depends) \
 		--deb-systemd bc-gateway.service \
-		bc-gateway.py="$GATEWAY_DEST_DIR/bc-gateway.py" \
+		gateway.py="$GATEWAY_DEST_DIR/bc-gateway.py" \
 		"$tmp_dir/bc-gateway"=/usr/bin
 
 	rm -Rf "$tmp_dir"
@@ -120,8 +145,9 @@ rm -rf "$BUILD_DIR"
 rm -rf "$TARGET_DIR"/*.deb
 mkdir -p "$BUILD_DIR" "$TARGET_DIR"
 
-for module in gateway paho_mqtt; do
-	eval "build_$module"
-done
+
+build_pip
+build_paho_mqtt
+build_bc_gateway
 
 rm -Rf "$BUILD_DIR"
