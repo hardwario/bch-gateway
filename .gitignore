@@ -1,3 +1,7 @@
 .deploykey
 .venv/
 dist/
+__pycache__/
+*.pyc
+build/
+*.egg-info/
