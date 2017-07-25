@@ -114,6 +114,7 @@ build_bc_gateway() {
 	einfo 'Building debian package bc-gateway'
 
 	cp -r bc_gateway "$BUILD_DIR"/
+	cp requirements.txt "$BUILD_DIR/bc_gateway"
 	cd "$BUILD_DIR"/bc_gateway
 
 	# Prepare symlink
@@ -126,8 +127,10 @@ build_bc_gateway() {
 	_fpm --name bc-gateway \
 		--depends bc-common \
 		$(python_depends) \
+		--config-files /etc \
 		--deb-systemd bc-gateway.service \
 		gateway.py="$GATEWAY_DEST_DIR/bc-gateway.py" \
+		config.yml=etc/bc-gateway.yml \
 		"$tmp_dir/bc-gateway"=/usr/bin
 
 	rm -Rf "$tmp_dir"
@@ -146,8 +149,8 @@ rm -rf "$TARGET_DIR"/*.deb
 mkdir -p "$BUILD_DIR" "$TARGET_DIR"
 
 
-build_pip
-build_paho_mqtt
+# build_pip
+# build_paho_mqtt
 build_bc_gateway
 
-rm -Rf "$BUILD_DIR"
+# rm -Rf "$BUILD_DIR"

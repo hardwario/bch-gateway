@@ -1,4 +1,4 @@
-device: /dev/ttyACM0
+device: /dev/stm32ACM0
 mqtt:
   host: localhost
   port: 1883

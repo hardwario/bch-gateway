@@ -6,7 +6,7 @@ Requires=mosquitto.service
 Requisite=dev-stm32ACM0.device
 
 [Service]
-ExecStart=/usr/bin/bc-gateway -d /dev/stm32ACM0
+ExecStart=/usr/bin/bc-gateway -c /etc/bc-gateway.yml
 User=bigclown
 Restart=on-failure
 RestartSec=10s
