@@ -35,80 +35,114 @@ config = {
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
 
-def mqtt_on_connect(client, userdata, flags, rc):
-    logging.info('Connected to MQTT broker with code %s', rc)
-    for topic in userdata['sub']:
-        logging.debug('Subscribe %s' % topic)
-        client.subscribe(topic)
+class Gateway:
 
+    def __init__(self, config):
+        self.ser = serial.Serial(config['device'], timeout=3.0)
 
-def mqtt_on_message(client, userdata, message):
-    subtopic = message.topic[5:]
-    i = subtopic.find('/')
-    node_name = subtopic[:i]
-    node_id = userdata['rename'].get(node_name, None)
-    if node_id:
-        subtopic = node_id + subtopic[i:]
+        logging.info('Opened serial port: %s', config['device'])
 
-    payload = message.payload if message.payload else b'null'
-    try:
-        json.loads(payload)
-    except Exception as e:
-        logging.error('parse json ' + str(message.topic) + ' ' + str(message.payload) + ' ' + str(e))
+        if platform.system() == 'Linux':
+            fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            logging.debug('Exclusive lock on file descriptor: %d' % self.ser.fileno())
 
-    userdata['serial'].write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
+        self.ser.write(b'\n')
 
+        self._rename_id = config['rename']
+        self._rename_name = {v: k for k, v in config['rename'].items()}
+        self._address = None
+        self._sub = set(['gateway/ping', 'node/+/+/+/+/+'])
 
-def run():
-    ser = serial.Serial(config['device'], timeout=3.0)
+        self.mqttc = paho.mqtt.client.Client()
+        self.mqttc.on_connect = self.mqtt_on_connect
+        self.mqttc.on_message = self.mqtt_on_message
+        self.mqttc.message_callback_add("gateway/ping", self.gateway_ping)
 
-    logging.info('Opened serial port: %s', config['device'])
+        self.mqttc.username_pw_set(config['mqtt']['username'], config['mqtt']['password'])
+        if config['mqtt']['cafile']:
+            self.mqttc.tls_set(config['mqtt']['cafile'], config['mqtt']['certfile'], config['mqtt']['keyfile'])
 
-    if platform.system() == 'Linux':
-        fcntl.flock(ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        logging.debug('Exclusive lock on file descriptor: %d' % ser.fileno())
+    def run(self):
+        self.mqttc.connect(config['mqtt']['host'], int(config['mqtt']['port']), keepalive=10)
+        self.mqttc.loop_start()
 
-    ser.write(b'\n')
+        self.ser.write(b'\n')
 
-    rename = {v: k for k, v in config['rename'].items()}
-    userdata = {
-        'serial': ser,
-        'rename': rename,
-        'address': None,
-        'sub': set(['node/+/+/+/+/+'])
-    }
-    mqttc = paho.mqtt.client.Client(userdata=userdata)
-    mqttc.on_connect = mqtt_on_connect
-    mqttc.on_message = mqtt_on_message
-    mqttc.username_pw_set(config['mqtt']['username'], config['mqtt']['password'])
-    if config['mqtt']['cafile']:
-        mqttc.tls_set(config['mqtt']['cafile'], config['mqtt']['certfile'], config['mqtt']['keyfile'])
-    mqttc.connect(config['mqtt']['host'], int(config['mqtt']['port']), keepalive=10)
-    mqttc.loop_start()
+        self.ser.write(b'["$/info/get", null]\n')
 
-    while True:
-        try:
-            line = ser.readline()
-        except serial.SerialException:
-            ser.close()
-            raise
-        if line:
-            logging.debug(line)
+        while True:
             try:
-                talk = json.loads(line.decode(), parse_float=decimal.Decimal)
-            except Exception:
-                logging.error('Invalid JSON message received from serial port: %s', line)
-            try:
+                line = self.ser.readline()
+            except serial.SerialException:
+                ser.close()
+                raise
+            if line:
+                logging.debug(line)
+
+                if line[0] == '!':
+                    self.log_message(line)
+                    continue
+
+                try:
+                    talk = json.loads(line.decode(), parse_float=decimal.Decimal)
+                    if len(talk) != 2:
+                        raise Exception
+                except Exception:
+                    logging.error('Invalid JSON message received from serial port: %s', line)
+
                 subtopic = talk[0]
-                i = subtopic.find('/')
-                node_ide = subtopic[:i]
-                node_name = config['rename'].get(node_ide, None)
-                if node_name:
-                    subtopic = node_name + subtopic[i:]
+                if subtopic.startswith("$/"):
+                    self.sys_message(subtopic, talk[1])
+                else:
+                    try:
+                        i = subtopic.find('/')
+                        node_ide = subtopic[:i]
+                        node_name = self._rename_id.get(node_ide, None)
+                        if node_name:
+                            subtopic = node_name + subtopic[i:]
 
-                mqttc.publish("node/" + subtopic, json.dumps(talk[1], use_decimal=True), qos=1)
-            except Exception:
-                logging.error('Failed to publish MQTT message: %s', line)
+                        self.mqttc.publish("node/" + subtopic, json.dumps(talk[1], use_decimal=True), qos=1)
+                    except Exception:
+                        logging.error('Failed to publish MQTT message: %s', line)
+
+    def mqtt_on_connect(self, client, userdata, flags, rc):
+        logging.info('Connected to MQTT broker with code %s', rc)
+        for topic in self._sub:
+            logging.debug('Subscribe %s' % topic)
+            client.subscribe(topic)
+
+    def mqtt_on_message(self, client, userdata, message):
+        if message.topic.startswith("gateway"):
+            return
+
+        subtopic = message.topic[5:]
+        i = subtopic.find('/')
+        node_name = subtopic[:i]
+        node_id = self._rename_name.get(node_name, None)
+        if node_id:
+            subtopic = node_id + subtopic[i:]
+
+        payload = message.payload if message.payload else b'null'
+        try:
+            json.loads(payload)
+        except Exception as e:
+            logging.error('parse json ' + str(message.topic) + ' ' + str(message.payload) + ' ' + str(e))
+
+        self.ser.write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
+
+    def log_message(self, line):
+        pass
+
+    def gateway_ping(self, client, userdata, message):
+        if "gateway/ping" == message.topic:
+            if self._address:
+                client.publish("gateway/pong", json.dumps(self._address))
+
+    def sys_message(self, topic, payload):
+        print("on_sys_message", topic, payload)
+        if "$/info" == topic:
+            self._address = payload['address']
+            self.mqttc.subscribe('gateway/%s/rename/set' % self._address)
 
 
 def main():
@@ -168,7 +202,8 @@ def main():
 
     while True:
         try:
-            run()
+            gateway = Gateway(config)
+            gateway.run()
         except Exception as e:
             logging.error(e)
             if os.getenv('DEBUG', False):
