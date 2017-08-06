@@ -37,7 +37,9 @@ LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
 def mqtt_on_connect(client, userdata, flags, rc):
     logging.info('Connected to MQTT broker with code %s', rc)
-    client.subscribe('node/+/+/+/+/+')
+    for topic in userdata['sub']:
+        logging.debug('Subscribe %s' % topic)
+        client.subscribe(topic)
 
 
 def mqtt_on_message(client, userdata, message):
@@ -69,8 +71,13 @@ def run():
     ser.write(b'\n')
 
     rename = {v: k for k, v in config['rename'].items()}
-
-    mqttc = paho.mqtt.client.Client(userdata={'serial': ser, 'rename': rename})
+    userdata = {
+        'serial': ser,
+        'rename': rename,
+        'address': None,
+        'sub': set(['node/+/+/+/+/+'])
+    }
+    mqttc = paho.mqtt.client.Client(userdata=userdata)
     mqttc.on_connect = mqtt_on_connect
     mqttc.on_message = mqtt_on_message
     mqttc.username_pw_set(config['mqtt']['username'], config['mqtt']['password'])
