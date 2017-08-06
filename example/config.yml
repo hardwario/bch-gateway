@@ -2,7 +2,6 @@ device: /dev/ttyACM0
 mqtt:
   host: localhost
   port: 8883
-  topic: node
   cafile: /home/karel/clown/tls/ca.crt
   certfile: /home/karel/clown/tls/client.crt
   keyfile: /home/karel/clown/tls/client.key
