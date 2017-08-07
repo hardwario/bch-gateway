@@ -7,6 +7,7 @@ import logging
 import argparse
 import simplejson as json
 import platform
+import socket
 import decimal
 import yaml
 import serial
@@ -38,7 +39,27 @@ LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 class Gateway:
 
     def __init__(self, config):
-        self.ser = serial.Serial(config['device'], timeout=3.0)
+        self._config = config
+        self._rename_id = config['rename']
+        self._rename_name = {v: k for k, v in config['rename'].items()}
+        self._name = config['name']
+        self._info = None
+        self._sub = set(['gateway/ping', 'gateway/all/info/get', 'node/+/+/+/+/+'])
+
+        self.ser = None
+
+        self.mqttc = paho.mqtt.client.Client()
+        self.mqttc.on_connect = self.mqtt_on_connect
+        self.mqttc.on_message = self.mqtt_on_message
+        self.mqttc.message_callback_add("gateway/ping", self.gateway_ping)
+        self.mqttc.message_callback_add("gateway/all/info/get", self.gateway_all_info_get)
+
+        self.mqttc.username_pw_set(config['mqtt']['username'], config['mqtt']['password'])
+        if config['mqtt']['cafile']:
+            self.mqttc.tls_set(config['mqtt']['cafile'], config['mqtt']['certfile'], config['mqtt']['keyfile'])
+
+    def _run(self):
+        self.ser = serial.Serial(self._config['device'], timeout=3.0)
 
         logging.info('Opened serial port: %s', config['device'])
 
@@ -48,36 +69,16 @@ class Gateway:
 
         self.ser.write(b'\n')
 
-        self._rename_id = config['rename']
-        self._rename_name = {v: k for k, v in config['rename'].items()}
-        self._address = None
-        self._sub = set(['gateway/ping', 'node/+/+/+/+/+'])
-
-        self.mqttc = paho.mqtt.client.Client()
-        self.mqttc.on_connect = self.mqtt_on_connect
-        self.mqttc.on_message = self.mqtt_on_message
-        self.mqttc.message_callback_add("gateway/ping", self.gateway_ping)
-
-        self.mqttc.username_pw_set(config['mqtt']['username'], config['mqtt']['password'])
-        if config['mqtt']['cafile']:
-            self.mqttc.tls_set(config['mqtt']['cafile'], config['mqtt']['certfile'], config['mqtt']['keyfile'])
-
-    def run(self):
-        self.mqttc.connect(config['mqtt']['host'], int(config['mqtt']['port']), keepalive=10)
-        self.mqttc.loop_start()
-
-        self.ser.write(b'\n')
-
-        self.ser.write(b'["$/info/get", null]\n')
+        self.write("$/info/get", None)
 
         while True:
             try:
                 line = self.ser.readline()
             except serial.SerialException:
-                ser.close()
+                self.ser.close()
                 raise
             if line:
-                logging.debug(line)
+                logging.debug("read %s", line)
 
                 if line[0] == '!':
                     self.log_message(line)
@@ -89,6 +90,7 @@ class Gateway:
                         raise Exception
                 except Exception:
                     logging.error('Invalid JSON message received from serial port: %s', line)
+                    continue
 
                 subtopic = talk[0]
                 if subtopic.startswith("$/"):
@@ -105,10 +107,26 @@ class Gateway:
                     except Exception:
                         logging.error('Failed to publish MQTT message: %s', line)
 
+    def start(self, reconect):
+        self.mqttc.connect(self._config['mqtt']['host'], int(self._config['mqtt']['port']), keepalive=10)
+        self.mqttc.loop_start()
+
+        while True:
+            try:
+                self._run()
+            except Exception as e:
+                logging.error(e)
+                if os.getenv('DEBUG', False):
+                    raise e
+            if not reconect:
+                break
+
+            time.sleep(3)
+
     def mqtt_on_connect(self, client, userdata, flags, rc):
         logging.info('Connected to MQTT broker with code %s', rc)
         for topic in self._sub:
-            logging.debug('Subscribe %s' % topic)
+            logging.debug('subscribe %s', topic)
             client.subscribe(topic)
 
     def mqtt_on_message(self, client, userdata, message):
@@ -116,6 +134,9 @@ class Gateway:
             return
 
         subtopic = message.topic[5:]
+        self.write(subtopic, json.loads(message.payload))
+        return
+
         i = subtopic.find('/')
         node_name = subtopic[:i]
         node_id = self._rename_name.get(node_name, None)
@@ -130,19 +151,40 @@ class Gateway:
 
         self.ser.write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
 
+    def write(self, topic, payload):
+        i = topic.find('/')
+        node_name = topic[:i]
+        node_id = self._rename_name.get(node_name, None)
+        if node_id:
+            topic = node_id + topic[i:]
+        line = json.dumps([topic, payload]) + '\n'
+        line = line.encode('utf-8')
+        logging.debug("write %s", line)
+        self.ser.write(line)
+
+    def publish(self, topic, payload):
+        if isinstance(topic, list):
+            topic = '/'.join(topic)
+        self.mqttc.publish(topic, json.dumps(payload))
+
     def log_message(self, line):
         pass
 
-    def gateway_ping(self, client, userdata, message):
-        if "gateway/ping" == message.topic:
-            if self._address:
-                client.publish("gateway/pong", json.dumps(self._address))
+    def gateway_ping(self, *args):
+        if self._name:
+            self.publish("gateway/pong", self._name)
+
+    def gateway_all_info_get(self, *args):
+        if self._name:
+            self.publish(["gateway", self._name, "info"], self._info)
 
     def sys_message(self, topic, payload):
         print("on_sys_message", topic, payload)
         if "$/info" == topic:
-            self._address = payload['address']
-            self.mqttc.subscribe('gateway/%s/rename/set' % self._address)
+            if self._name is None:
+                self._name = payload['address']
+            self._info = payload
+            self.gateway_all_info_get()
 
 
 def main():
@@ -164,6 +206,15 @@ def main():
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format=LOG_FORMAT)
 
+    if args.list:
+        try:
+            for p in serial.tools.list_ports.comports():
+                print(p)
+            sys.exit(0)
+        except Exception:
+            logging.error('Failed listing available serial ports')
+            sys.exit(1)
+
     if args.config:
         try:
             with open(args.config, 'r') as f:
@@ -182,6 +233,14 @@ def main():
             raise e
             sys.exit(1)
 
+    if 'name' not in config:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            config['name'] = s.getsockname()[0]
+        except:
+            config['name'] = None
+
     config['device'] = args.device if args.device else config['device']
     config['mqtt']['host'] = args.mqtt_host if args.mqtt_host else config['mqtt']['host']
     config['mqtt']['port'] = args.mqtt_port if args.mqtt_port else config['mqtt']['port']
@@ -191,27 +250,13 @@ def main():
     config['mqtt']['certfile'] = args.mqtt_certfile if args.mqtt_certfile else config['mqtt']['certfile']
     config['mqtt']['keyfile'] = args.mqtt_keyfile if args.mqtt_keyfile else config['mqtt']['keyfile']
 
-    if args.list:
-        try:
-            for p in serial.tools.list_ports.comports():
-                print(p)
-            sys.exit(0)
-        except Exception:
-            logging.error('Failed listing available serial ports')
-            sys.exit(1)
-
-    while True:
-        try:
-            gateway = Gateway(config)
-            gateway.run()
-        except Exception as e:
-            logging.error(e)
-            if os.getenv('DEBUG', False):
-                raise e
-        if args.wait:
-            time.sleep(3)
-        else:
-            break
+    try:
+        gateway = Gateway(config)
+        gateway.start(args.wait)
+    except Exception as e:
+        logging.error(e)
+        if os.getenv('DEBUG', False):
+            raise e
 
 
 if __name__ == '__main__':
