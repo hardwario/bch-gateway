@@ -30,7 +30,8 @@ config = {
         'certfile': None,
         'keyfile': None,
     },
-    'rename': {}
+    'rename': {},
+    'name': None
 }
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
@@ -40,9 +41,9 @@ class Gateway:
 
     def __init__(self, config):
         self._config = config
-        self._rename_id = config['rename']
-        self._rename_name = {v: k for k, v in config['rename'].items()}
-        self._name = config['name']
+        self._node_rename_id = config['rename']
+        self._node_rename_name = {v: k for k, v in config['rename'].items()}
+        self._name = None
         self._info = None
         self._sub = set(['gateway/ping', 'gateway/all/info/get', 'node/+/+/+/+/+'])
 
@@ -57,6 +58,8 @@ class Gateway:
         self.mqttc.username_pw_set(config['mqtt']['username'], config['mqtt']['password'])
         if config['mqtt']['cafile']:
             self.mqttc.tls_set(config['mqtt']['cafile'], config['mqtt']['certfile'], config['mqtt']['keyfile'])
+
+        self._rename(config['name'])
 
     def _run(self):
         self.ser = serial.Serial(self._config['device'], timeout=3.0)
@@ -125,11 +128,15 @@ class Gateway:
             client.subscribe(topic)
 
     def mqtt_on_message(self, client, userdata, message):
-        if message.topic.startswith("gateway"):
-            return
-
-        subtopic = message.topic[5:]
         payload = message.payload.decode('utf-8')
+
+        logging.debug('mqtt_on_message %s %s', message.topic, message.payload)
+
+        if message.topic.startswith("gateway"):
+            subtopic = message.topic[8 + len(self._name):]
+        else:
+            subtopic = message.topic[5:]
+
         if payload == '':
             payload = 'null'
 
@@ -144,7 +151,7 @@ class Gateway:
     def write(self, topic, payload):
         i = topic.find('/')
         node_name = topic[:i]
-        node_id = self._rename_name.get(node_name, None)
+        node_id = self._node_rename_name.get(node_name, None)
         if node_id:
             topic = node_id + topic[i:]
         line = json.dumps([topic, payload]) + '\n'
@@ -177,7 +184,7 @@ class Gateway:
     def gateway_message(self, topic, payload):
         if "/info" == topic:
             if self._name is None:
-                self._name = payload['address']
+                self._rename(payload['address'])
             self._info = payload
             self.write("/nodes/get", None)
 
@@ -187,13 +194,36 @@ class Gateway:
         try:
             i = subtopic.find('/')
             node_ide = subtopic[:i]
-            node_name = self._rename_id.get(node_ide, None)
+            node_name = self._node_rename_id.get(node_ide, None)
             if node_name:
                 subtopic = node_name + subtopic[i:]
 
             self.mqttc.publish("node/" + subtopic, json.dumps(payload, use_decimal=True), qos=1)
         except Exception:
             logging.error('Failed to publish MQTT message: %s, %s', subtopic, payload)
+
+    def sub_add(self, topic):
+        if isinstance(topic, list):
+            topic = '/'.join(topic)
+        if topic not in self._sub:
+            logging.debug('subscribe %s', topic)
+            self._sub.update([topic])
+            self.mqttc.subscribe(topic)
+
+    def sub_remove(self, topic):
+        if isinstance(topic, list):
+            topic = '/'.join(topic)
+        if topic in self._sub:
+            logging.debug('unsubscribe %s', topic)
+            self._sub.remove(topic)
+            self.mqttc.unsubscribe(topic)
+
+    def _rename(self, name):
+        if self._name:
+            self.sub_remove(["gateway", self._name, '+/+'])
+        self._name = name
+        if name:
+            self.sub_add(["gateway", self._name, '+/+'])
 
 
 def main():
@@ -242,12 +272,12 @@ def main():
             raise e
             sys.exit(1)
 
-    if 'name' not in config:
+    if not config['name']:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
             config['name'] = s.getsockname()[0]
-        except:
+        except Exception:
             config['name'] = None
 
     config['device'] = args.device if args.device else config['device']
