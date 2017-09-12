@@ -69,7 +69,7 @@ class Gateway:
 
         self.ser.write(b'\n')
 
-        self.write("$/info/get", None)
+        self.write("/info/get", None)
 
         while True:
             try:
@@ -95,17 +95,12 @@ class Gateway:
                 subtopic = talk[0]
                 if subtopic.startswith("$/"):
                     self.sys_message(subtopic, talk[1])
-                else:
-                    try:
-                        i = subtopic.find('/')
-                        node_ide = subtopic[:i]
-                        node_name = self._rename_id.get(node_ide, None)
-                        if node_name:
-                            subtopic = node_name + subtopic[i:]
 
-                        self.mqttc.publish("node/" + subtopic, json.dumps(talk[1], use_decimal=True), qos=1)
-                    except Exception:
-                        logging.error('Failed to publish MQTT message: %s', line)
+                elif subtopic.startswith("/"):
+                    self.gateway_message(subtopic, talk[1])
+
+                else:
+                    self.node_message(subtopic, talk[1])
 
     def start(self, reconect):
         self.mqttc.connect(self._config['mqtt']['host'], int(self._config['mqtt']['port']), keepalive=10)
@@ -134,22 +129,17 @@ class Gateway:
             return
 
         subtopic = message.topic[5:]
-        self.write(subtopic, json.loads(message.payload))
-        return
+        payload = message.payload.decode('utf-8')
+        if payload == '':
+            payload = 'null'
 
-        i = subtopic.find('/')
-        node_name = subtopic[:i]
-        node_id = self._rename_name.get(node_name, None)
-        if node_id:
-            subtopic = node_id + subtopic[i:]
-
-        payload = message.payload if message.payload else b'null'
         try:
-            json.loads(payload)
+            payload = json.loads(payload)
         except Exception as e:
             logging.error('parse json ' + str(message.topic) + ' ' + str(message.payload) + ' ' + str(e))
+            return
 
-        self.ser.write(b'["' + subtopic.encode('utf-8') + b'",' + payload + b']\n')
+        self.write(subtopic, payload)
 
     def write(self, topic, payload):
         i = topic.find('/')
@@ -165,10 +155,10 @@ class Gateway:
     def publish(self, topic, payload):
         if isinstance(topic, list):
             topic = '/'.join(topic)
-        self.mqttc.publish(topic, json.dumps(payload))
+        self.mqttc.publish(topic, json.dumps(payload, use_decimal=True), qos=1)
 
     def log_message(self, line):
-        pass
+        logging.debug('log_message %s', line)
 
     def gateway_ping(self, *args):
         if self._name:
@@ -179,12 +169,31 @@ class Gateway:
             self.publish(["gateway", self._name, "info"], self._info)
 
     def sys_message(self, topic, payload):
-        print("on_sys_message", topic, payload)
-        if "$/info" == topic:
+        logging.debug("on_sys_message", topic, payload)
+
+        if "$/nodes" == topic:
+            self.publish(["gateway", self._name, "nodes"], payload + [self._info['address']])
+
+    def gateway_message(self, topic, payload):
+        if "/info" == topic:
             if self._name is None:
                 self._name = payload['address']
             self._info = payload
-            self.gateway_all_info_get()
+            self.write("/nodes/get", None)
+
+        self.publish(["gateway", self._name, topic[1:]], payload)
+
+    def node_message(self, subtopic, payload):
+        try:
+            i = subtopic.find('/')
+            node_ide = subtopic[:i]
+            node_name = self._rename_id.get(node_ide, None)
+            if node_name:
+                subtopic = node_name + subtopic[i:]
+
+            self.mqttc.publish("node/" + subtopic, json.dumps(payload, use_decimal=True), qos=1)
+        except Exception:
+            logging.error('Failed to publish MQTT message: %s, %s', subtopic, payload)
 
 
 def main():
