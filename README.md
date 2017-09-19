@@ -48,7 +48,7 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
 
 * Add/Pair node
   ```
-  mosquitto_pub -t 'gateway/{id}/node/add' -m 'aaaa'
+  mosquitto_pub -t 'gateway/{id}/nodes/add' -m 'aaaa'
   ```
 
   ```
@@ -57,7 +57,7 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
 
 * Remove/Unpair node
   ```
-  mosquitto_pub -t 'gateway/{id}/node/remove' -m 'aaaa'
+  mosquitto_pub -t 'gateway/{id}/nodes/remove' -m 'aaaa'
   ```
 
   ```
@@ -81,21 +81,40 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
   ...
   ```
 
-* Automatic pairing
+* Enrollment mode
 
   ```
-  mosquitto_pub -t 'gateway/{id}/automatic-pairing/start' -n
+  mosquitto_pub -t 'gateway/{id}/enrollment/start' -n
   ```
-
-  ```
-  mosquitto_pub -t 'gateway/{id}/automatic-pairing/stop' -n
-  ```
-
+  LED start blink
   ```
   gateway/{id}/attach "{id-node-0}"
   gateway/{id}/attach "{id-node-1}"
   ...
   ```
+
+  ```
+  mosquitto_pub -t 'gateway/{id}/enrollment/stop' -n
+  ```
+  LED turns off
+
+
+* Automatic pairing of all visible nodes
+
+  ```
+  mosquitto_pub -t 'gateway/{id}/automatic-pairing/start' -n
+  ```
+  LED start blink
+  ```
+  gateway/{id}/attach "{id-node-0}"
+  gateway/{id}/attach "{id-node-1}"
+  ...
+  ```
+
+  ```
+  mosquitto_pub -t 'gateway/{id}/automatic-pairing/stop' -n
+  ```
+  LED turns off
 
 
 ## Serial talk
