@@ -114,6 +114,7 @@ build_bc_gateway() {
 	einfo 'Building debian package bc-gateway'
 
 	cp -r bc_gateway "$BUILD_DIR"/
+    cp -r config/* "$BUILD_DIR"/bc_gateway
 	cp requirements.txt "$BUILD_DIR/bc_gateway"
 	cd "$BUILD_DIR"/bc_gateway
 
@@ -129,8 +130,10 @@ build_bc_gateway() {
 		$(python_depends) \
 		--config-files /etc \
 		--deb-systemd bc-gateway.service \
+        --deb-systemd bc-gateway-acm0.service \
 		gateway.py="$GATEWAY_DEST_DIR/bc-gateway.py" \
-		config.yml=etc/bc-gateway.yml \
+		bc-gateway.yml=etc/bigclown/bc-gateway.yml \
+        bc-gateway-acm0.yml=etc/bigclown/bc-gateway-acm0.yml \
 		"$tmp_dir/bc-gateway"=/usr/bin
 
 	rm -Rf "$tmp_dir"
