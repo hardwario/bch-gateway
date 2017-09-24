@@ -117,15 +117,6 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
   LED turns off
 
 
-## Serial talk
-
-Send:
-["$/info/get", null]
-
-Response:
-["$/info", {"id": "%012llx", "firmware": ""}]
-
-
 ## License
 
 This project is licensed under the [MIT License](https://opensource.org/licenses/MIT/) - see the [LICENSE](LICENSE) file for details.
