@@ -118,12 +118,11 @@ build_bc_gateway() {
 	cp requirements.txt "$BUILD_DIR/bc_gateway"
 	cd "$BUILD_DIR"/bc_gateway
 
-	# Prepare symlink
-	local tmp_dir="$(mktemp -d)"
-	ln -s "$GATEWAY_DEST_DIR"/bc-gateway.py "$tmp_dir"/bc-gateway
-
 	replace_placeholders *.py
 	chmod +x gateway.py
+
+	# Prepare symlink
+	ln -s "$GATEWAY_DEST_DIR"/bc-gateway.py bc-gateway
 
 	_fpm --name bc-gateway \
 		--depends bc-common \
@@ -134,9 +133,8 @@ build_bc_gateway() {
 		gateway.py="$GATEWAY_DEST_DIR/bc-gateway.py" \
 		bc-gateway.yml=etc/bigclown/bc-gateway.yml \
         bc-gateway-acm0.yml=etc/bigclown/bc-gateway-acm0.yml \
-		"$tmp_dir/bc-gateway"=/usr/bin
+		bc-gateway=/usr/bin/
 
-	rm -Rf "$tmp_dir"
 	cd - >/dev/null
 }
 
