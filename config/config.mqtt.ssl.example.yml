@@ -6,4 +6,4 @@ mqtt:
   certfile: /home/karel/clown/tls/client.crt
   keyfile: /home/karel/clown/tls/client.key
 rename:
-  836d1983631e: gateway
+  836d1983631e: room

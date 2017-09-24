@@ -3,8 +3,8 @@ Description=BigClown gateway between Base unit connected via USB and MQTT broker
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/bc-gateway -W -c /etc/bc-gateway.yml
-User=bigclown
+ExecStart=/usr/bin/bc-gateway -W -c /etc/bigclown/bc-gateway.yml
+User=root
 Restart=always
 RestartSec=10s
 
