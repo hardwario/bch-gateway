@@ -81,8 +81,9 @@ class Gateway:
             fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             logging.debug('Exclusive lock on file descriptor: %d' % self.ser.fileno())
 
-        self.ser.reset_input_buffer()
-        self.ser.reset_output_buffer()
+        # TODO: update pyserial on raspberry pi
+        # self.ser.reset_input_buffer()
+        # self.ser.reset_output_buffer()
         self.ser.write(b'\n')
         self.write("/info/get", None)
 
