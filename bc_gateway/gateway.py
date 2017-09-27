@@ -35,7 +35,7 @@ config = {
 }
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
-
+log_level_lut = {'D': 'debug', 'I': 'info', 'W': 'warning', 'E': 'error'}
 
 class Gateway:
 
@@ -45,6 +45,7 @@ class Gateway:
         self._node_rename_name = {v: k for k, v in config['rename'].items()}
         self._name = None
         self._info = None
+        self._address = None
         self._sub = set(['gateway/ping', 'gateway/all/info/get', 'node/+/+/+/+/+'])
 
         self.ser = None
@@ -61,8 +62,14 @@ class Gateway:
 
         self._rename(config['name'])
 
+    def _serial_disconnect(self):
+        self._address = None
+        self._info = None
+        self._rename(self._config['name'])
+        self.gateway_all_info_get()
+
     def _run(self):
-        self.ser = serial.Serial(self._config['device'], timeout=3.0)
+        self.ser = serial.Serial(self._config['device'], baudrate=115200, timeout=3.0)
 
         logging.info('Opened serial port: %s', config['device'])
 
@@ -73,7 +80,6 @@ class Gateway:
         self.ser.reset_input_buffer()
         self.ser.reset_output_buffer()
         self.ser.write(b'\n')
-
         self.write("/info/get", None)
 
         while True:
@@ -81,20 +87,25 @@ class Gateway:
                 line = self.ser.readline()
             except serial.SerialException:
                 self.ser.close()
+                self._serial_disconnect()
                 raise
             if line:
                 logging.debug("read %s", line)
 
-                if line[0] == '!':
+                line = line.decode()
+
+                if line[0] == '#':
                     self.log_message(line)
                     continue
 
                 try:
-                    talk = json.loads(line.decode(), parse_float=decimal.Decimal)
+                    talk = json.loads(line, parse_float=decimal.Decimal)
                     if len(talk) != 2:
                         raise Exception
                 except Exception:
                     logging.error('Invalid JSON message received from serial port: %s', line)
+                    if self._info is None:
+                        self.write("/info/get", None)
                     continue
 
                 subtopic = talk[0]
@@ -168,6 +179,9 @@ class Gateway:
 
     def log_message(self, line):
         logging.debug('log_message %s', line)
+        if self._address:
+            level_char = line[line.find("<") + 1]
+            self.publish(['log', self._address, log_level_lut[level_char]], line[1:].strip())
 
     def gateway_ping(self, *args):
         if self._name:
@@ -180,11 +194,9 @@ class Gateway:
     def sys_message(self, topic, payload):
         logging.debug("on_sys_message", topic, payload)
 
-        if "$/nodes" == topic:
-            self.publish(["gateway", self._name, "nodes"], payload + [self._info['address']])
-
     def gateway_message(self, topic, payload):
         if "/info" == topic:
+            self._address = payload['address']
             if self._name is None:
                 self._rename(payload['address'])
             self._info = payload
