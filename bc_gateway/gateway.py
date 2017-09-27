@@ -37,6 +37,7 @@ config = {
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 log_level_lut = {'D': 'debug', 'I': 'info', 'W': 'warning', 'E': 'error'}
 
+
 class Gateway:
 
     def __init__(self, config):
@@ -46,7 +47,8 @@ class Gateway:
         self._name = None
         self._info = None
         self._address = None
-        self._sub = set(['gateway/ping', 'gateway/all/info/get', 'node/+/+/+/+/+'])
+        self._sub = set(['gateway/ping', 'gateway/all/info/get'])
+        self._nodes = set([])
 
         self.ser = None
 
@@ -66,6 +68,8 @@ class Gateway:
         self._address = None
         self._info = None
         self._rename(self._config['name'])
+        for address in list(self._nodes):
+            self.node_remove(address)
         self.gateway_all_info_get()
 
     def _run(self):
@@ -202,6 +206,16 @@ class Gateway:
             self._info = payload
             self.write("/nodes/get", None)
 
+        elif "/nodes" == topic:
+            for address in payload:
+                self.node_add(address)
+
+        elif "/attach" == topic:
+            self.node_add(payload)
+
+        elif "/detach" == topic:
+            self.node_remove(payload)
+
         self.publish(["gateway", self._name, topic[1:]], payload)
 
     def node_message(self, subtopic, payload):
@@ -231,6 +245,26 @@ class Gateway:
             logging.debug('unsubscribe %s', topic)
             self._sub.remove(topic)
             self.mqttc.unsubscribe(topic)
+
+    def node_add(self, address):
+        logging.debug('node_add %s', address)
+        if address in self._nodes:
+            return
+        self._nodes.update([address])
+        self.sub_add(['node', address, '+/+/+/+'])
+        name = self._node_rename_id.get(address, None)
+        if name:
+            self.sub_add(['node', name, '+/+/+/+'])
+
+    def node_remove(self, address):
+        logging.debug('node_remove %s', address)
+        if address not in self._nodes:
+            return
+        self._nodes.remove(address)
+        self.sub_remove(['node', address, '+/+/+/+'])
+        name = self._node_rename_id.get(address, None)
+        if name:
+            self.sub_remove(['node', name, '+/+/+/+'])
 
     def _rename(self, name):
         if self._name:
