@@ -1,0 +1,5 @@
+device: /dev/ttyUSB0
+name: test
+mqtt:
+  host: localhost
+  port: 1883
