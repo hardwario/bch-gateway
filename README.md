@@ -25,12 +25,12 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
   ```
 
   ```
-  gateway/all/info {"id": "%012llx", "firmware": ""}
+  gateway/{id-gateway}/info {"address": "836d19839c3b", "firmware": "bcf-usb-gateway"}
   ```
 
 * List of paired nodes
   ```
-  mosquitto_pub -t 'gateway/{id}/nodes/get' -n
+  mosquitto_pub -t 'gateway/{id-gateway}/nodes/get' -n
   ```
 
   ```
@@ -39,7 +39,7 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
 
 * Purge all nodes
   ```
-  mosquitto_pub -t 'gateway/{id}/nodes/purge' -n
+  mosquitto_pub -t 'gateway/{id-gateway}/nodes/purge' -n
   ```
 
   ```
@@ -48,53 +48,53 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
 
 * Add/Pair node
   ```
-  mosquitto_pub -t 'gateway/{id}/nodes/add' -m 'aaaa'
+  mosquitto_pub -t 'gateway/{id-gateway}/nodes/add' -m 'aaaa'
   ```
 
   ```
-  gateway/{id}/attach "{id-node}"
+  gateway/{id-gateway}/attach "{id-node}"
   ```
 
 * Remove/Unpair node
   ```
-  mosquitto_pub -t 'gateway/{id}/nodes/remove' -m 'aaaa'
+  mosquitto_pub -t 'gateway/{id-gateway}/nodes/remove' -m 'aaaa'
   ```
 
   ```
-  gateway/{id}/detach "{id-node}"
+  gateway/{id-gateway}/detach "{id-node}"
   ```
 
 * Scan
 
   ```
-  mosquitto_pub -t 'gateway/{id}/scan/start' -n
+  mosquitto_pub -t 'gateway/{id-gateway}/scan/start' -n
   ```
 
   ```
-  mosquitto_pub -t 'gateway/{id}/scan/stop' -n
+  mosquitto_pub -t 'gateway/{id-gateway}/scan/stop' -n
   ```
 
   ```
-  gateway/{id}/scan "{id-node-0}"
-  gateway/{id}/scan "{id-node-1}"
-  gateway/{id}/scan "{id-node-2}"
+  gateway/{id-gateway}/scan "{id-node-0}"
+  gateway/{id-gateway}/scan "{id-node-1}"
+  gateway/{id-gateway}/scan "{id-node-2}"
   ...
   ```
 
 * Enrollment mode
 
   ```
-  mosquitto_pub -t 'gateway/{id}/enrollment/start' -n
+  mosquitto_pub -t 'gateway/{id-gateway}/enrollment/start' -n
   ```
   LED start blink
   ```
-  gateway/{id}/attach "{id-node-0}"
-  gateway/{id}/attach "{id-node-1}"
+  gateway/{id-gateway}/attach "{id-node-0}"
+  gateway/{id-gateway}/attach "{id-node-1}"
   ...
   ```
 
   ```
-  mosquitto_pub -t 'gateway/{id}/enrollment/stop' -n
+  mosquitto_pub -t 'gateway/{id-gateway}/enrollment/stop' -n
   ```
   LED turns off
 
@@ -102,17 +102,17 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
 * Automatic pairing of all visible nodes
 
   ```
-  mosquitto_pub -t 'gateway/{id}/automatic-pairing/start' -n
+  mosquitto_pub -t 'gateway/{id-gateway}/automatic-pairing/start' -n
   ```
   LED start blink
   ```
-  gateway/{id}/attach "{id-node-0}"
-  gateway/{id}/attach "{id-node-1}"
+  gateway/{id-gateway}/attach "{id-node-0}"
+  gateway/{id-gateway}/attach "{id-node-1}"
   ...
   ```
 
   ```
-  mosquitto_pub -t 'gateway/{id}/automatic-pairing/stop' -n
+  mosquitto_pub -t 'gateway/{id-gateway}/automatic-pairing/stop' -n
   ```
   LED turns off
 
