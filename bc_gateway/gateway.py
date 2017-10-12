@@ -31,7 +31,7 @@ config = {
         'keyfile': None,
     },
     'rename': {},
-    'name': None
+    'name': "{id}"
 }
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
@@ -46,7 +46,7 @@ class Gateway:
         self._node_rename_name = {v: k for k, v in config['rename'].items()}
         self._name = None
         self._info = None
-        self._address = None
+        self._info_id = None
         self._sub = set(['gateway/ping', 'gateway/all/info/get'])
         self._nodes = set([])
 
@@ -62,12 +62,12 @@ class Gateway:
         if config['mqtt']['cafile']:
             self.mqttc.tls_set(config['mqtt']['cafile'], config['mqtt']['certfile'], config['mqtt']['keyfile'])
 
-        self._rename(config['name'])
+        self._rename()
 
     def _serial_disconnect(self):
-        self._address = None
+        self._info_id = None
         self._info = None
-        self._rename(self._config['name'])
+        self._rename()
         for address in list(self._nodes):
             self.node_remove(address)
         self.gateway_all_info_get()
@@ -184,9 +184,9 @@ class Gateway:
 
     def log_message(self, line):
         logging.debug('log_message %s', line)
-        if self._address:
+        if self._info_id:
             level_char = line[line.find("<") + 1]
-            self.publish(['log', self._address, log_level_lut[level_char]], line[1:].strip())
+            self.publish(['log', self._info_id, log_level_lut[level_char]], line[1:].strip())
 
     def gateway_ping(self, *args):
         if self._name:
@@ -201,10 +201,18 @@ class Gateway:
 
     def gateway_message(self, topic, payload):
         if "/info" == topic:
-            self._address = payload['address']
-            if self._name is None:
-                self._rename(payload['address'])
+            # TODO: remove in the future
+            if 'address' in payload:
+                payload['id'] = payload['address']
+                del payload['address']
+
+            self._info_id = payload['id']
             self._info = payload
+            self._rename()
+
+            if self._info["firmware"].startswith("bcf-usb-gateway"):
+                self.node_add(self._info_id)
+
             self.write("/nodes/get", None)
 
         elif "/nodes" == topic:
@@ -217,7 +225,8 @@ class Gateway:
         elif "/detach" == topic:
             self.node_remove(payload)
 
-        self.publish(["gateway", self._name, topic[1:]], payload)
+        if self._name:
+            self.publish(["gateway", self._name, topic[1:]], payload)
 
     def node_message(self, subtopic, payload):
         try:
@@ -267,10 +276,31 @@ class Gateway:
         if name:
             self.sub_remove(['node', name, '+/+/+/+'])
 
-    def _rename(self, name):
+    def _rename(self):
         if self._name:
             self.sub_remove(["gateway", self._name, '+/+'])
+
+        self._name = None
+
+        name = self._config['name']
+
+        if "{ip}" in name:
+            ip = None
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                ip = s.getsockname()[0]
+            except Exception:
+                return
+            name = name.replace("{ip}", ip)
+
+        if "{id}" in name:
+            if not self._info_id:
+                return
+            name = name.replace("{id}", self._info_id)
+
         self._name = name
+
         if name:
             self.sub_add(["gateway", self._name, '+/+'])
 
@@ -320,14 +350,6 @@ def main():
             logging.error('Failed opening configuration file')
             raise e
             sys.exit(1)
-
-    if not config['name']:
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            config['name'] = s.getsockname()[0]
-        except Exception:
-            config['name'] = None
 
     config['device'] = args.device if args.device else config['device']
     config['mqtt']['host'] = args.mqtt_host if args.mqtt_host else config['mqtt']['host']
