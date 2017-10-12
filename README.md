@@ -23,7 +23,7 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
   ```
   mosquitto_pub -t 'gateway/all/info/get' -n
   ```
-
+  response:
   ```
   gateway/{id-gateway}/info {"address": "836d19839c3b", "firmware": "bcf-usb-gateway"}
   ```
@@ -48,7 +48,7 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
 
 * Add/Pair node
   ```
-  mosquitto_pub -t 'gateway/{id-gateway}/nodes/add' -m 'aaaa'
+  mosquitto_pub -t 'gateway/{id-gateway}/nodes/add' -m '"{id-node}"'
   ```
 
   ```
@@ -57,7 +57,7 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
 
 * Remove/Unpair node
   ```
-  mosquitto_pub -t 'gateway/{id-gateway}/nodes/remove' -m 'aaaa'
+  mosquitto_pub -t 'gateway/{id-gateway}/nodes/remove' -m '"{id-node}"'
   ```
 
   ```
