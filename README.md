@@ -116,6 +116,18 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
   ```
   LED turns off
 
+## Config
+
+* name: string
+
+  support variables:
+  * {ip} - ip address
+  * {id} - the id of the connected usb-dongle or usb-gateway
+
+  default: "{id}"
+
+  example: "{ip}-ttyUSB0"
+
 ## Node-Red buttons
 
 If you use Node-Red, you can import text below to create buttons in your flow. You can list, pair and delete nodes with a click of the mouse.
