@@ -20,7 +20,7 @@ if platform.system() == 'Linux':
 __version__ = '@@VERSION@@'
 
 config = {
-    'device': '/dev/ttyACM0',
+    'device': '/dev/ttyUSB0',
     'mqtt': {
         'host': 'localhost',
         'port': 1883,
@@ -30,9 +30,9 @@ config = {
         'certfile': None,
         'keyfile': None,
     },
-    'name': "{id}",
-    'automatic_rename_kit_nodes': True
-    'rename': {},
+    'name': "dongle",
+    'automatic_rename_kit_nodes': True,
+    'rename': {}
 }
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
