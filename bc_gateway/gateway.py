@@ -30,12 +30,20 @@ config = {
         'certfile': None,
         'keyfile': None,
     },
+    'name': "{id}",
+    'automatic_rename_kit_nodes': True
     'rename': {},
-    'name': "{id}"
 }
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 log_level_lut = {'D': 'debug', 'I': 'info', 'W': 'warning', 'E': 'error'}
+kit_lut = {'bcf-kit-push-button': 'push-button',
+           'bcf-kit-climate-monitor': 'climate-monitor',
+           'bcf-kit-motion-detector': 'motion-detector',
+           'bcf-kit-flood-detector': 'flood-detector',
+           'bcf-kit-thermostat-lcd': 'thermostat-lcd',
+           'bcf-kit-thermostat-relay': 'thermostat-relay',
+           'bcf-kit-co2-monitor': 'co2-monitor'}
 
 
 class Gateway:
@@ -229,16 +237,26 @@ class Gateway:
             self.publish(["gateway", self._name, topic[1:]], payload)
 
     def node_message(self, subtopic, payload):
+        i = subtopic.find('/')
+        node_ide = subtopic[:i]
+
         try:
-            i = subtopic.find('/')
-            node_ide = subtopic[:i]
             node_name = self._node_rename_id.get(node_ide, None)
             if node_name:
                 subtopic = node_name + subtopic[i:]
 
             self.mqttc.publish("node/" + subtopic, json.dumps(payload, use_decimal=True), qos=1)
+
         except Exception:
+            raise
             logging.error('Failed to publish MQTT message: %s, %s', subtopic, payload)
+
+        if self._config['automatic_rename_kit_nodes'] and subtopic[i:] == '/info' and 'firmware' in payload:
+            if node_ide not in self._node_rename_id:
+                for key in kit_lut:
+                    print(key)
+                    if payload['firmware'].startswith(key):
+                        self.node_rename(node_ide, kit_lut[key])
 
     def sub_add(self, topic):
         if isinstance(topic, list):
@@ -275,6 +293,32 @@ class Gateway:
         name = self._node_rename_id.get(address, None)
         if name:
             self.sub_remove(['node', name, '+/+/+/+'])
+
+    def node_rename(self, address, name):
+        logging.debug('node_rename %s to %s', address, name)
+
+        if name in self._node_rename_name:
+            logging.error('name is exists %s to %s', address, name)
+            return False
+
+        old_name = self._node_rename_id.get(address, None)
+
+        if old_name:
+            self.sub_remove(['node', old_name, '+/+/+/+'])
+
+        self._node_rename_id[address] = name
+        self._node_rename_name[name] = address
+
+        self.sub_add(['node', name, '+/+/+/+'])
+
+        if 'config_file' in self._config:
+            with open(self._config['config_file'], 'r') as f:
+                config_yaml = yaml.load(f)
+                config_yaml['rename'] = self._node_rename_id
+            with open(self._config['config_file'], 'w') as f:
+                yaml.safe_dump(config_yaml, f, indent=2, default_flow_style=False)
+
+        return True
 
     def _rename(self):
         if self._name:
@@ -346,6 +390,9 @@ def main():
                     config['mqtt']['certfile'] = None
                 if not config['mqtt']['keyfile']:
                     config['mqtt']['keyfile'] = None
+
+            config['config_file'] = args.config
+
         except Exception as e:
             logging.error('Failed opening configuration file')
             raise e
