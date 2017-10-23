@@ -3,22 +3,22 @@
 
 from setuptools import setup, find_packages
 
-requirements = ['paho-mqtt>=1.0', 'pyserial>=2.6', 'PyYAML>=3.11', 'simplejson>=3.6.0']
+requirements = ['paho-mqtt>=1.0', 'pyserial>=3.0', 'PyYAML>=3.11', 'simplejson>=3.6.0']
 
 setup(
-    name='bc-gateway',
+    name='bcg',
     version='@@VERSION@@',
-    description='BigClown gateway between USB and MQTT broker.',
-    author='BigClownLabs',
+    description='BigClown USB Gateway',
+    author='Hardwario s.r.o.',
     author_email='karel.blavka@bigclown.com',
     url='https://github.com/bigclownlabs/bch-usb-gateway',
-    packages=['bc_gateway'],
+    packages=['bcg'],
     package_dir={'': '.'},
     include_package_data=True,
     install_requires=requirements,
     license='MIT',
     zip_safe=False,
-    keywords=['BigClown', 'BigClownLabs', 'gateway'],
+    keywords=['BigClown', 'BigClownLabs', 'gateway', 'MQTT'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
@@ -42,9 +42,9 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        bc-gateway=bc_gateway.gateway:main
+        bcg=bcg.gateway:main
     ''',
     long_description="""
-BigClown USB Gateway
+BigClown gateway between USB and MQTT broker.
 """
 )
