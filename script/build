@@ -81,14 +81,14 @@ build_pip() {
     if [ -z "${TRAVIS_BUILD_DIR:-}" ]; then
         echo "$BUILD_DIR"
         mkdir -p "$BUILD_DIR"
-        cp -r bc_gateway "$BUILD_DIR"/bc_gateway
+        cp -r bcg "$BUILD_DIR"/bcg
         cp setup.py "$BUILD_DIR"/
         cd "$BUILD_DIR"
     fi
 
-    chmod +x bc_gateway/gateway.py
+    chmod +x bcg/gateway.py
 
-	replace_placeholders bc_gateway/gateway.py
+	replace_placeholders bcg/gateway.py
     replace_placeholders setup.py
 
     python3 setup.py sdist
@@ -113,7 +113,7 @@ build_paho_mqtt() {
 build_bc_gateway() {
 	einfo 'Building debian package bc-gateway'
 
-	cp -r bc_gateway "$BUILD_DIR"/
+	cp -r bcg "$BUILD_DIR"/bc_gateway
     cp -r config/* "$BUILD_DIR"/bc_gateway
 	cp requirements.txt "$BUILD_DIR/bc_gateway"
 	cd "$BUILD_DIR"/bc_gateway
@@ -150,7 +150,7 @@ rm -rf "$TARGET_DIR"/*.deb
 mkdir -p "$BUILD_DIR" "$TARGET_DIR"
 
 
-# build_pip
+build_pip
 # build_paho_mqtt
 build_bc_gateway
 
