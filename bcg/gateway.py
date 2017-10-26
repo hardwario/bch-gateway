@@ -30,7 +30,7 @@ config = {
         'certfile': None,
         'keyfile': None,
     },
-    'name': "dongle",
+    'name': None,
     'automatic_rename_kit_nodes': True,
     'rename': {}
 }
@@ -218,7 +218,11 @@ class Gateway:
             self._info = payload
             self._rename()
 
+            # TODO: remove in the future
             if self._info["firmware"].startswith("bcf-usb-gateway"):
+                self.node_add(self._info_id)
+
+            if self._info["firmware"].startswith("bcf-gateway-core-module"):
                 self.node_add(self._info_id)
 
             self.write("/nodes/get", None)
@@ -328,20 +332,24 @@ class Gateway:
 
         name = self._config['name']
 
-        if "{ip}" in name:
-            ip = None
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.connect(("8.8.8.8", 80))
-                ip = s.getsockname()[0]
-            except Exception:
-                return
-            name = name.replace("{ip}", ip)
+        if name:
+            if "{ip}" in name:
+                ip = None
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.connect(("8.8.8.8", 80))
+                    ip = s.getsockname()[0]
+                except Exception:
+                    return
+                name = name.replace("{ip}", ip)
 
-        if "{id}" in name:
-            if not self._info_id:
-                return
-            name = name.replace("{id}", self._info_id)
+            if "{id}" in name:
+                if not self._info_id:
+                    return
+                name = name.replace("{id}", self._info_id)
+        elif name is None and self._info and 'firmware' in self._info:
+            name = self._info['firmware'].replace('bcf-gateway-' , '', 1)
+            name = name[:name.find(':')]
 
         self._name = name
 
