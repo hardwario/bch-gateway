@@ -23,98 +23,149 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
   ```
   mosquitto_pub -t 'gateway/all/info/get' -n
   ```
-  response:
-  ```
-  gateway/{id-gateway}/info {"address": "836d19839c3b", "firmware": "bcf-usb-gateway"}
-  ```
+
+    response:
+    ```
+    gateway/{name}/info {"id": "836d19839c3b", "firmware": "bcf-gateway-...."}
+    ```
 
 * List of paired nodes
   ```
-  mosquitto_pub -t 'gateway/{id-gateway}/nodes/get' -n
+  mosquitto_pub -t 'gateway/{name}/nodes/get' -n
   ```
 
-  ```
-  gateway/{id-gateway}/nodes ["{id-node-0}", "{id-node-id1}", "{id-node-id2}"]
-  ```
+    response:
+    ```
+    gateway/{name}/nodes ["{id-node-0}", "{id-node-id1}", "{id-node-id2}"]
+    ```
+
+* Pairing (enrollment mode stop)
+
+  * Start
+    ```
+    mosquitto_pub -t 'gateway/{name}/enrollment/start' -n
+    ```
+      LED on gateway start blink
+
+      response:
+      ```
+      gateway/{name}/enrollment "start"
+      ```
+
+      response when the node is successfully added:
+
+      ```
+      gateway/{name}/attach "{id-node-0}"
+      gateway/{name}/attach "{id-node-1}"
+      ...
+      ```
+
+  * Stop
+    ```
+    mosquitto_pub -t 'gateway/{name}/enrollment/stop' -n
+    ```
+      LED on gateway turns off
+
+      response:
+      ```
+      gateway/{name}/enrollment "stop"
+      ```
 
 * Purge all nodes
   ```
-  mosquitto_pub -t 'gateway/{id-gateway}/nodes/purge' -n
+  mosquitto_pub -t 'gateway/{name}/nodes/purge' -n
   ```
 
+    response:
+    ```
+    gateway/{name}/nodes []
+    ```
+
+* Manual Add/Pair node
   ```
-  gateway/{id-gateway}/nodes []
+  mosquitto_pub -t 'gateway/{name}/nodes/add' -m '"{id-node}"'
   ```
 
-* Add/Pair node
+    response:
+    ```
+    gateway/{name}/attach "{id-node}"
+    ```
+
+* Manual Remove/Unpair node
   ```
-  mosquitto_pub -t 'gateway/{id-gateway}/nodes/add' -m '"{id-node}"'
+  mosquitto_pub -t 'gateway/{name}/nodes/remove' -m '"{id-node}"'
   ```
 
-  ```
-  gateway/{id-gateway}/attach "{id-node}"
-  ```
+    response:
+    ```
+    gateway/{name}/detach "{id-node}"
+    ```
 
-* Remove/Unpair node
-  ```
-  mosquitto_pub -t 'gateway/{id-gateway}/nodes/remove' -m '"{id-node}"'
-  ```
+* Scan Start
 
-  ```
-  gateway/{id-gateway}/detach "{id-node}"
-  ```
+  * Start
+    ```
+    mosquitto_pub -t 'gateway/{name}/scan/start' -n
+    ```
 
-* Scan
+      response:
+      ```
+      gateway/{name}/scan "start"
+      ```
 
-  ```
-  mosquitto_pub -t 'gateway/{id-gateway}/scan/start' -n
-  ```
+      response for unknown node
+      ```
+      gateway/{name}/found "{id-node-0}"
+      gateway/{name}/found "{id-node-1}"
+      gateway/{name}/found "{id-node-2}"
+      ...
+      ```
 
-  ```
-  mosquitto_pub -t 'gateway/{id-gateway}/scan/stop' -n
-  ```
+  * Stop
+    ```
+    mosquitto_pub -t 'gateway/{name}/scan/stop' -n
+    ```
 
-  ```
-  gateway/{id-gateway}/scan "{id-node-0}"
-  gateway/{id-gateway}/scan "{id-node-1}"
-  gateway/{id-gateway}/scan "{id-node-2}"
-  ...
-  ```
-
-* Enrollment mode
-
-  ```
-  mosquitto_pub -t 'gateway/{id-gateway}/enrollment/start' -n
-  ```
-  LED start blink
-  ```
-  gateway/{id-gateway}/attach "{id-node-0}"
-  gateway/{id-gateway}/attach "{id-node-1}"
-  ...
-  ```
-
-  ```
-  mosquitto_pub -t 'gateway/{id-gateway}/enrollment/stop' -n
-  ```
-  LED turns off
-
+      response:
+      ```
+      gateway/{name}/scan "stop"
+      ```
 
 * Automatic pairing of all visible nodes
 
-  ```
-  mosquitto_pub -t 'gateway/{id-gateway}/automatic-pairing/start' -n
-  ```
-  LED start blink
-  ```
-  gateway/{id-gateway}/attach "{id-node-0}"
-  gateway/{id-gateway}/attach "{id-node-1}"
-  ...
-  ```
+  !!! This is experimental features do not all work
 
-  ```
-  mosquitto_pub -t 'gateway/{id-gateway}/automatic-pairing/stop' -n
-  ```
-  LED turns off
+  * Start
+
+    ```
+    mosquitto_pub -t 'gateway/{name}/automatic-pairing/start' -n
+    ```
+
+      LED on gateway start blink
+
+      response:
+      ```
+      gateway/{name}/automatic-pairing "start"
+      ```
+
+      response when the node is successfully added:
+      ```
+      gateway/{name}/attach "{id-node-0}"
+      gateway/{name}/attach "{id-node-1}"
+      ...
+      ```
+
+  * Stop
+      ```
+      mosquitto_pub -t 'gateway/{name}/automatic-pairing/stop' -n
+      ```
+
+        LED on gateway turns off
+
+        response:
+        ```
+        gateway/{name}/automatic-pairing "stop"
+        ```
 
 ## Config
 
@@ -132,9 +183,16 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
 
 If you use Node-Red, you can import text below to create buttons in your flow. You can list, pair and delete nodes with a click of the mouse.
 
-```
-[{"id":"3bb38e8.d76af72","type":"mqtt in","z":"b1ad2115.7445a","name":"","topic":"#","qos":"2","broker":"ba3b2e25.7c8b7","x":190,"y":260,"wires":[["4a1ce85.3017d18"]]},{"id":"4a1ce85.3017d18","type":"debug","z":"b1ad2115.7445a","name":"","active":true,"console":"false","complete":"false","x":370,"y":260,"wires":[]},{"id":"4ca43c81.0071a4","type":"inject","z":"b1ad2115.7445a","name":"All gateway info","topic":"gateway/all/info/get","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":219,"y":352,"wires":[["a6c1e618.3996d8"]]},{"id":"a6c1e618.3996d8","type":"mqtt out","z":"b1ad2115.7445a","name":"","topic":"","qos":"","retain":"","broker":"ba3b2e25.7c8b7","x":404,"y":353,"wires":[]},{"id":"28b390cb.9d42d","type":"inject","z":"b1ad2115.7445a","name":"Enrollment start","topic":"gateway/192.168.1.100/enrollment/start","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":220,"y":480,"wires":[["b48b000f.19c45"]]},{"id":"b48b000f.19c45","type":"mqtt out","z":"b1ad2115.7445a","name":"","topic":"","qos":"","retain":"","broker":"ba3b2e25.7c8b7","x":405,"y":481,"wires":[]},{"id":"ab7eabbc.aa0988","type":"inject","z":"b1ad2115.7445a","name":"Enrollment stop","topic":"gateway/192.168.1.100/enrollment/stop","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":220,"y":520,"wires":[["a7ab52a6.97a14"]]},{"id":"a7ab52a6.97a14","type":"mqtt out","z":"b1ad2115.7445a","name":"","topic":"","qos":"","retain":"","broker":"ba3b2e25.7c8b7","x":405,"y":521,"wires":[]},{"id":"ca19077c.ed3be8","type":"inject","z":"b1ad2115.7445a","name":"List of paired nodes","topic":"gateway/192.168.1.100/nodes/get","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":230,"y":400,"wires":[["d6c723e6.a72de"]]},{"id":"d6c723e6.a72de","type":"mqtt out","z":"b1ad2115.7445a","name":"","topic":"","qos":"","retain":"","broker":"ba3b2e25.7c8b7","x":405,"y":401,"wires":[]},{"id":"8019bb1c.a76098","type":"inject","z":"b1ad2115.7445a","name":"purge all nodes","topic":"gateway/192.168.1.100/nodes/purge","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":220,"y":700,"wires":[["3ea8f41.1f66f0c"]]},{"id":"3ea8f41.1f66f0c","type":"mqtt out","z":"b1ad2115.7445a","name":"","topic":"","qos":"","retain":"","broker":"ba3b2e25.7c8b7","x":405,"y":701,"wires":[]},{"id":"86686e4a.8480b","type":"inject","z":"b1ad2115.7445a","name":"auto pair start","topic":"gateway/192.168.1.100/automatic-pairing/start","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":210,"y":580,"wires":[["8fb42dcb.6d776"]]},{"id":"8fb42dcb.6d776","type":"mqtt out","z":"b1ad2115.7445a","name":"","topic":"","qos":"","retain":"","broker":"ba3b2e25.7c8b7","x":405,"y":581,"wires":[]},{"id":"5962b3a1.307a6c","type":"inject","z":"b1ad2115.7445a","name":"auto pair stop","topic":"gateway/192.168.1.100/automatic-pairing/stop","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":210,"y":620,"wires":[["63b0aab2.6b8444"]]},{"id":"63b0aab2.6b8444","type":"mqtt out","z":"b1ad2115.7445a","name":"","topic":"","qos":"","retain":"","broker":"ba3b2e25.7c8b7","x":405,"y":621,"wires":[]},{"id":"ba3b2e25.7c8b7","type":"mqtt-broker","z":"","broker":"localhost","port":"1883","clientid":"","usetls":false,"compatmode":true,"keepalive":"60","cleansession":true,"willTopic":"","willQos":"0","willPayload":"","birthTopic":"","birthQos":"0","birthPayload":""}]
-```
+* For bcf-gateway-usb-dongle
+
+  ```
+  [{"id":"83c6c60c.209d78","type":"mqtt in","z":"97027127.a55f7","name":"","topic":"#","qos":"2","broker":"de273190.7f6f2","x":610,"y":80,"wires":[["454a64bc.50f77c"]]},{"id":"454a64bc.50f77c","type":"debug","z":"97027127.a55f7","name":"","active":true,"console":"false","complete":"false","x":790,"y":80,"wires":[]},{"id":"9e87ab30.a50be8","type":"inject","z":"97027127.a55f7","name":"All gateway info","topic":"gateway/all/info/get","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":639,"y":172,"wires":[["504dd396.bb5b4c"]]},{"id":"504dd396.bb5b4c","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"de273190.7f6f2","x":824,"y":173,"wires":[]},{"id":"f447966d.ed0cb8","type":"inject","z":"97027127.a55f7","name":"Pairing/Enrollment start","topic":"gateway/usb-dongle/enrollment/start","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":660,"y":280,"wires":[["ae043e16.df77c"]]},{"id":"ae043e16.df77c","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"de273190.7f6f2","x":825,"y":281,"wires":[]},{"id":"80092576.c83998","type":"inject","z":"97027127.a55f7","name":"Pairing/Enrollment stop","topic":"gateway/usb-dongle/enrollment/stop","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":660,"y":320,"wires":[["86c93689.7d0e58"]]},{"id":"86c93689.7d0e58","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"de273190.7f6f2","x":825,"y":321,"wires":[]},{"id":"8f7b14c7.898c38","type":"inject","z":"97027127.a55f7","name":"List of paired nodes","topic":"gateway/usb-dongle/nodes/get","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":650,"y":220,"wires":[["75f5e8db.ed19a8"]]},{"id":"75f5e8db.ed19a8","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"de273190.7f6f2","x":825,"y":221,"wires":[]},{"id":"ed3cfe08.3321b","type":"inject","z":"97027127.a55f7","name":"purge all nodes","topic":"gateway/usb-dongle/nodes/purge","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":640,"y":380,"wires":[["2acde0de.0d9de"]]},{"id":"2acde0de.0d9de","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"de273190.7f6f2","x":825,"y":381,"wires":[]},{"id":"de273190.7f6f2","type":"mqtt-broker","z":"","broker":"localhost","port":"1883","clientid":"","usetls":false,"compatmode":true,"keepalive":"60","cleansession":true,"willTopic":"","willQos":"0","willPayload":"","birthTopic":"","birthQos":"0","birthPayload":""}]
+  ```
+
+* For bcf-gateway-core-module
+  ```
+  [{"id":"47ab49a8.0a88f8","type":"mqtt in","z":"97027127.a55f7","name":"","topic":"#","qos":"2","broker":"deefb40d.51f818","x":370,"y":100,"wires":[["7208a9c6.a8d3e8"]]},{"id":"7208a9c6.a8d3e8","type":"debug","z":"97027127.a55f7","name":"","active":true,"console":"false","complete":"false","x":550,"y":100,"wires":[]},{"id":"3e634a0c.8e15e6","type":"inject","z":"97027127.a55f7","name":"All gateway info","topic":"gateway/all/info/get","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":399,"y":192,"wires":[["84e9ef97.a81d5"]]},{"id":"84e9ef97.a81d5","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"deefb40d.51f818","x":584,"y":193,"wires":[]},{"id":"6d1a6395.7b49ac","type":"inject","z":"97027127.a55f7","name":"Pairing/Enrollment start","topic":"gateway/core-module/enrollment/start","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":400,"y":320,"wires":[["6bb142ef.da565c"]]},{"id":"6bb142ef.da565c","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"deefb40d.51f818","x":585,"y":321,"wires":[]},{"id":"191cf80e.901568","type":"inject","z":"97027127.a55f7","name":"Pairing/Enrollment stop","topic":"gateway/core-module/enrollment/stop","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":400,"y":360,"wires":[["11669b55.138775"]]},{"id":"11669b55.138775","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"deefb40d.51f818","x":585,"y":361,"wires":[]},{"id":"de1bca38.1214f8","type":"inject","z":"97027127.a55f7","name":"List of paired nodes","topic":"gateway/core-module/nodes/get","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":410,"y":240,"wires":[["7cb77d25.465514"]]},{"id":"7cb77d25.465514","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"deefb40d.51f818","x":585,"y":241,"wires":[]},{"id":"ec929b66.dddbb8","type":"inject","z":"97027127.a55f7","name":"purge all nodes","topic":"gateway/core-module/nodes/purge","payload":"","payloadType":"str","repeat":"","crontab":"","once":false,"x":400,"y":420,"wires":[["afe70282.f5ead"]]},{"id":"afe70282.f5ead","type":"mqtt out","z":"97027127.a55f7","name":"","topic":"","qos":"","retain":"","broker":"deefb40d.51f818","x":585,"y":421,"wires":[]},{"id":"deefb40d.51f818","type":"mqtt-broker","z":"","broker":"localhost","port":"1883","clientid":"","usetls":false,"compatmode":true,"keepalive":"60","cleansession":true,"willTopic":"","willQos":"0","willPayload":"","birthTopic":"","birthQos":"0","birthPayload":""}]
+  ```
 
 ## License
 
