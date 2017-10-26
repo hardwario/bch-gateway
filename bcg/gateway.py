@@ -37,13 +37,13 @@ config = {
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 log_level_lut = {'D': 'debug', 'I': 'info', 'W': 'warning', 'E': 'error'}
-kit_lut = {'bcf-kit-push-button': 'push-button',
-           'bcf-kit-climate-monitor': 'climate-monitor',
-           'bcf-kit-motion-detector': 'motion-detector',
-           'bcf-kit-flood-detector': 'flood-detector',
-           'bcf-kit-thermostat-lcd': 'thermostat-lcd',
-           'bcf-kit-thermostat-relay': 'thermostat-relay',
-           'bcf-kit-co2-monitor': 'co2-monitor'}
+kit_lut = {'bcf-kit-push-button': 'kit-push-button',
+           'bcf-kit-climate-monitor': 'kit-climate-monitor',
+           'bcf-kit-motion-detector': 'kit-motion-detector',
+           'bcf-kit-flood-detector': 'kit-flood-detector',
+           'bcf-kit-thermostat-lcd': 'kit-thermostat-lcd',
+           'bcf-kit-thermostat-relay': 'kit-thermostat-relay',
+           'bcf-kit-co2-monitor': 'kit-co2-monitor'}
 
 
 class Gateway:
@@ -315,12 +315,12 @@ class Gateway:
 
         self.sub_add(['node', name, '+/+/+/+'])
 
-        if 'config_file' in self._config:
-            with open(self._config['config_file'], 'r') as f:
-                config_yaml = yaml.load(f)
-                config_yaml['rename'] = self._node_rename_id
-            with open(self._config['config_file'], 'w') as f:
-                yaml.safe_dump(config_yaml, f, indent=2, default_flow_style=False)
+        # if 'config_file' in self._config:
+        #     with open(self._config['config_file'], 'r') as f:
+        #         config_yaml = yaml.load(f)
+        #         config_yaml['rename'] = self._node_rename_id
+        #     with open(self._config['config_file'], 'w') as f:
+        #         yaml.safe_dump(config_yaml, f, indent=2, default_flow_style=False)
 
         return True
 
@@ -348,7 +348,7 @@ class Gateway:
                     return
                 name = name.replace("{id}", self._info_id)
         elif name is None and self._info and 'firmware' in self._info:
-            name = self._info['firmware'].replace('bcf-gateway-' , '', 1)
+            name = self._info['firmware'].replace('bcf-gateway-', '', 1)
             name = name[:name.find(':')]
 
         self._name = name
