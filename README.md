@@ -53,11 +53,15 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
       ```
 
       response when the node is successfully added:
-
       ```
       gateway/{name}/attach "{id-node-0}"
       gateway/{name}/attach "{id-node-1}"
       ...
+      ```
+
+      Error response if there is not enough space:
+      ```
+      gateway/{name}/attach-failure "{id-node-1}"
       ```
 
   * Stop
@@ -89,6 +93,11 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
     response:
     ```
     gateway/{name}/attach "{id-node}"
+    ```
+
+    Error response if there is not enough space:
+    ```
+    gateway/{name}/attach-failure "{id-node-1}"
     ```
 
 * Manual Remove/Unpair node
@@ -167,15 +176,15 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
         gateway/{name}/automatic-pairing "stop"
         ```
 
-## Config
+## Configuration file
 
 * name: string
 
   support variables:
   * {ip} - ip address
-  * {id} - the id of the connected usb-dongle or usb-gateway
+  * {id} - the id of the connected usb-dongle or core-module
 
-  default: "{id}"
+  default: null - automatic detect name from gateway firmware
 
   example: "{ip}-ttyUSB0"
 
