@@ -50,7 +50,8 @@ class Gateway:
 
     def __init__(self, config):
         self._config = config
-        self._node_rename_id = config['rename']
+        self._alias_list = {}
+        self._node_rename_id = config['rename'].copy()
         self._node_rename_name = {v: k for k, v in config['rename'].items()}
         self._name = None
         self._info = None
@@ -122,10 +123,10 @@ class Gateway:
                     continue
 
                 subtopic = talk[0]
-                if subtopic.startswith("$/"):
+                if subtopic[0] == "$":
                     self.sys_message(subtopic, talk[1])
 
-                elif subtopic.startswith("/"):
+                elif subtopic[0] == "/":
                     self.gateway_message(subtopic, talk[1])
 
                 else:
@@ -175,12 +176,15 @@ class Gateway:
         self.write(subtopic, payload)
 
     def write(self, topic, payload):
-        i = topic.find('/')
-        node_name = topic[:i]
-        node_id = self._node_rename_name.get(node_name, None)
-        if node_id:
-            topic = node_id + topic[i:]
-        line = json.dumps([topic, payload]) + '\n'
+        if isinstance(topic, list):
+            topic = '/'.join(topic)
+        if topic[0] != '/' or topic[0] == '$':
+            i = topic.find('/')
+            node_name = topic[:i]
+            node_id = self._node_rename_name.get(node_name, None)
+            if node_id:
+                topic = node_id + topic[i:]
+        line = json.dumps([topic, payload], use_decimal=True) + '\n'
         line = line.encode('utf-8')
         logging.debug("write %s", line)
         self.ser.write(line)
@@ -205,7 +209,22 @@ class Gateway:
             self.publish(["gateway", self._name, "info"], self._info)
 
     def sys_message(self, topic, payload):
-        logging.debug("on_sys_message", topic, payload)
+        # logging.debug("on_sys_message %s %s", topic, payload)
+        if topic.startswith("$eeprom/alias/list/"):
+            topic, page = topic.rsplit('/', 1)
+            self._alias_list.update(payload)
+            if len(payload) == 8:
+                self.write("$eeprom/alias/list", page + 1)
+            else:
+                logging.debug("alias_list: %s", self._alias_list)
+                for address, name in self._alias_list.items():
+                    self.node_rename(address, name)
+
+        elif topic == "$eeprom/alias/add/ok":
+            self._alias_list[payload] = self._node_rename_id[payload]
+
+        elif topic == "$eeprom/alias/remove/ok":
+            self._alias_list.pop(payload, None)
 
     def gateway_message(self, topic, payload):
         if "/info" == topic:
@@ -226,6 +245,7 @@ class Gateway:
                 self.node_add(self._info_id)
 
             self.write("/nodes/get", None)
+            self.write("$eeprom/alias/list", 0)
 
         elif "/nodes" == topic:
             for address in payload:
@@ -258,9 +278,13 @@ class Gateway:
         if self._config['automatic_rename_kit_nodes'] and subtopic[i:] == '/info' and 'firmware' in payload:
             if node_ide not in self._node_rename_id:
                 for key in kit_lut:
-                    print(key)
                     if payload['firmware'].startswith(key):
-                        self.node_rename(node_ide, kit_lut[key])
+                        name_base = kit_lut[key]
+                        for i in range(0, 32):
+                            name = name_base + ':' + str(i)
+                            if name not in self._node_rename_name:
+                                self.node_rename(node_ide, name)
+                                return
 
     def sub_add(self, topic):
         if isinstance(topic, list):
@@ -291,12 +315,22 @@ class Gateway:
     def node_remove(self, address):
         logging.debug('node_remove %s', address)
         if address not in self._nodes:
+            logging.debug('address not in self._nodes %s', address)
             return
         self._nodes.remove(address)
         self.sub_remove(['node', address, '+/+/+/+'])
+
         name = self._node_rename_id.get(address, None)
         if name:
             self.sub_remove(['node', name, '+/+/+/+'])
+
+            if address in self._alias_list and self._alias_list[address] == name:
+                self.write('$eeprom/alias/remove', address)
+
+            if address not in self._config['rename']:
+                self._node_rename_id.pop(address, None)
+                if self._node_rename_name[name] == address:
+                    self._node_rename_name.pop(name, None)
 
     def node_rename(self, address, name):
         logging.debug('node_rename %s to %s', address, name)
@@ -313,7 +347,11 @@ class Gateway:
         self._node_rename_id[address] = name
         self._node_rename_name[name] = address
 
-        self.sub_add(['node', name, '+/+/+/+'])
+        if address in self._nodes:
+            self.sub_add(['node', name, '+/+/+/+'])
+
+        if address not in self._alias_list or self._alias_list[address] != name:
+            self.write('$eeprom/alias/add', {'id': address, 'name': name})
 
         # if 'config_file' in self._config:
         #     with open(self._config['config_file'], 'r') as f:
@@ -418,6 +456,8 @@ def main():
     try:
         gateway = Gateway(config)
         gateway.start(args.wait)
+    except KeyboardInterrupt as e:
+        return
     except Exception as e:
         logging.error(e)
         if os.getenv('DEBUG', False):
@@ -425,7 +465,4 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass
+    main()
