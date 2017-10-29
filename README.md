@@ -39,7 +39,7 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
     gateway/{name}/nodes ["{id-node-0}", "{id-node-id1}", "{id-node-id2}"]
     ```
 
-* Pairing (enrollment mode stop)
+* Pairing (enrollment mode)
 
   * Start
     ```
@@ -51,6 +51,8 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
       ```
       gateway/{name}/enrollment "start"
       ```
+
+      Gateway is waiting to pair node. To pare node, long press the button on Core Module.
 
       response when the node is successfully added:
       ```
