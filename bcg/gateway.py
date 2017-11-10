@@ -43,7 +43,8 @@ kit_lut = {'bcf-kit-push-button': 'kit-push-button',
            'bcf-kit-flood-detector': 'kit-flood-detector',
            'bcf-kit-thermostat-lcd': 'kit-thermostat-lcd',
            'bcf-kit-thermostat-relay': 'kit-thermostat-relay',
-           'bcf-kit-co2-monitor': 'kit-co2-monitor'}
+           'bcf-kit-co2-monitor': 'kit-co2-monitor',
+           'bcf-generic-node': 'generic-node'}
 
 
 class Gateway:
