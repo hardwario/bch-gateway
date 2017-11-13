@@ -37,13 +37,6 @@ config = {
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 log_level_lut = {'D': 'debug', 'I': 'info', 'W': 'warning', 'E': 'error'}
-kit_lut = {'bcf-kit-push-button': 'kit-push-button',
-           'bcf-kit-climate-monitor': 'kit-climate-monitor',
-           'bcf-kit-motion-detector': 'kit-motion-detector',
-           'bcf-kit-flood-detector': 'kit-flood-detector',
-           'bcf-kit-thermostat-lcd': 'kit-thermostat-lcd',
-           'bcf-kit-thermostat-relay': 'kit-thermostat-relay',
-           'bcf-kit-co2-monitor': 'kit-co2-monitor'}
 
 
 class Gateway:
@@ -277,14 +270,13 @@ class Gateway:
 
         if self._config['automatic_rename_kit_nodes'] and subtopic[i:] == '/info' and 'firmware' in payload:
             if node_ide not in self._node_rename_id:
-                for key in kit_lut:
-                    if payload['firmware'].startswith(key):
-                        name_base = kit_lut[key]
-                        for i in range(0, 32):
-                            name = name_base + ':' + str(i)
-                            if name not in self._node_rename_name:
-                                self.node_rename(node_ide, name)
-                                return
+                if payload['firmware'].startswith("kit-"):
+                    name_base = payload['firmware']
+                    for i in range(0, 32):
+                        name = name_base + ':' + str(i)
+                        if name not in self._node_rename_name:
+                            self.node_rename(node_ide, name)
+                            return
 
     def sub_add(self, topic):
         if isinstance(topic, list):
@@ -387,8 +379,7 @@ class Gateway:
                 name = name.replace("{id}", self._info_id)
         elif name is None and self._info and 'firmware' in self._info:
             name = self._info['firmware'].replace('bcf-gateway-', '', 1)
-            name = name[:name.find(':')]
-
+            name = name.split(':', 1)[0]
         self._name = name
 
         if name:
