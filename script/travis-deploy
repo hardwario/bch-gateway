@@ -2,7 +2,7 @@
 set -eu
 
 # Relative path to a directory where to look for .deb files.
-DIST_DIR='dist'
+DIST_DIR='dist_deb'
 DEPLOY_REMOTE='deployer@repo.bigclown.com'
 : ${DEBIAN_RELEASE:="jessie"}
 

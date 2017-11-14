@@ -16,7 +16,7 @@ cd "$(dirname "$0")/.."
 
 : ${BASE_DIR:="$(pwd)"}
 : ${BUILD_DIR:="$(pwd)/build"}
-: ${TARGET_DIR:="$(pwd)/dist"}
+: ${TARGET_DIR:="$(pwd)/dist_deb"}
 
 PKG_MAINTAINER='BigClown Labs <support@bigclown.com>'
 PKG_HOMEPAGE='https://github.com/bigclownlabs/bch-usb-gateway'

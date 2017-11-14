@@ -207,7 +207,7 @@ class Gateway:
             topic, page = topic.rsplit('/', 1)
             self._alias_list.update(payload)
             if len(payload) == 8:
-                self.write("$eeprom/alias/list", page + 1)
+                self.write("$eeprom/alias/list", int(page) + 1)
             else:
                 logging.debug("alias_list: %s", self._alias_list)
                 for address, name in self._alias_list.items():
