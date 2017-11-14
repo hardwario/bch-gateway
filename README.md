@@ -2,9 +2,9 @@
 
 # Hub Service for BigClown USB Gateway
 
-[![Travis](https://img.shields.io/travis/bigclownlabs/bch-usb-gateway/master.svg)](https://travis-ci.org/bigclownlabs/bch-usb-gateway)
-[![Release](https://img.shields.io/github/release/bigclownlabs/bch-usb-gateway.svg)](https://github.com/bigclownlabs/bch-usb-gateway/releases)
-[![License](https://img.shields.io/github/license/bigclownlabs/bch-usb-gateway.svg)](https://github.com/bigclownlabs/bch-usb-gateway/blob/master/LICENSE)
+[![Travis](https://img.shields.io/travis/bigclownlabs/bch-gateway/master.svg)](https://travis-ci.org/bigclownlabs/bch-gateway)
+[![Release](https://img.shields.io/github/release/bigclownlabs/bch-gateway.svg)](https://github.com/bigclownlabs/bch-gateway/releases)
+[![License](https://img.shields.io/github/license/bigclownlabs/bch-gateway.svg)](https://github.com/bigclownlabs/bch-gateway/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/twitter/follow/BigClownLabs.svg?style=social&label=Follow)](https://twitter.com/BigClownLabs)
 
 This repository contains CLI service for BigClown USB Gateway.
