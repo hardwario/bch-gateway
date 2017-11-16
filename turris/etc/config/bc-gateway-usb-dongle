@@ -1,0 +1,9 @@
+
+config config 'gateway'
+	option name 'usb-dongle'
+	option device '/dev/ttyUSB0'
+	option automatic_rename_kit_nodes '1'
+
+config config 'mqtt'
+	option host 'localhost'
+	option port '1883'

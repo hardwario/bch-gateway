@@ -1,0 +1,58 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=1
+
+USE_PROCD=1
+
+PROG=/usr/bin/bcg
+
+CONF=/tmp/bc-gateway-core-module.generated.conf
+
+UCI_STARTED=
+UCI_DISABLED=
+
+append() {
+    local cfg="$1"
+    local uci_name="$2"
+    local out_name="$3"
+	local default="$4"
+    config_get val $cfg $uci_name $default
+    if [ -n "$val" ]; then
+        echo "$out_name $val" >> $CONF
+    fi
+}
+
+start_service() {
+	config_load bc-gateway-core-module
+
+	rm -rf $CONF
+    echo "Generating bc-gateway-core-module config file in $CONF"
+
+    append gateway name 'name:' core-module
+	append gateway device 'device:' /dev/ttyACM0
+	append gateway automatic_rename_kit_nodes 'automatic_rename_kit_nodes:' 1
+
+	echo "mqtt:" >> $CONF
+
+	append mqtt host '  host:' localhost
+	append mqtt port '  port:' 1883
+	append mqtt cafile '  cafile:'
+	append mqtt certfile '  certfile:'
+	append mqtt keyfile '  keyfile:'
+
+	procd_open_instance
+	procd_set_param respawn
+	procd_set_param command "$PROG" -c "$CONF" -W
+	procd_close_instance
+}
+
+stop_service() {
+	service_stop "$PROG"
+	ps | grep "$PROG"  | grep -v grep | sed -e 's/^\s*\([0-9]\+\)\s.*$/\1/' | xargs -r -- kill -9
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger 'bc-gateway-core-module'
+}
