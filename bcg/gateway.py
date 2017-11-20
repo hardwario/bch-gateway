@@ -52,6 +52,7 @@ class Gateway:
         self._sub = set(['gateway/ping', 'gateway/all/info/get'])
         self._nodes = set([])
 
+        self._ser_error_cnt = 0
         self.ser = None
 
         self.mqttc = paho.mqtt.client.Client()
@@ -67,9 +68,12 @@ class Gateway:
         self._rename()
 
     def _serial_disconnect(self):
+        logging.info('Disconnect serial port')
+
         self._info_id = None
         self._info = None
         self._rename()
+        self._alias_list = {}
         for address in list(self._nodes):
             self.node_remove(address)
         self.gateway_all_info_get()
@@ -78,6 +82,8 @@ class Gateway:
         self.ser = serial.Serial(self._config['device'], baudrate=115200, timeout=3.0)
 
         logging.info('Opened serial port: %s', config['device'])
+
+        self._ser_error_cnt = 0
 
         if platform.system() == 'Linux':
             fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -132,10 +138,16 @@ class Gateway:
         while True:
             try:
                 self._run()
+            except serial.serialutil.SerialException as e:
+                if e.errno == 2 and self._ser_error_cnt == 0:
+                    logging.error(e)
+                    self._ser_error_cnt += 1
+
             except Exception as e:
                 logging.error(e)
                 if os.getenv('DEBUG', False):
                     raise e
+
             if not reconect:
                 break
 
@@ -388,12 +400,13 @@ class Gateway:
 
 def main():
     argp = argparse.ArgumentParser(description='BigClown gateway between USB serial port and MQTT broker')
+    subparser = argp.add_subparsers(dest='command', metavar='COMMAND')
+    subparser.add_parser('devices', help="show devices")
     argp.add_argument('-c', '--config', help='path to configuration file (YAML format)')
     argp.add_argument('-d', '--device', help='path to gateway serial port (default is /dev/ttyACM0)')
     argp.add_argument('-H', '--mqtt-host', help='MQTT host to connect to (default is localhost)')
     argp.add_argument('-P', '--mqtt-port', help='MQTT port to connect to (default is 1883)')
-    argp.add_argument('-W', '--wait', help='wait on connect or reconnect', action='store_true')
-    argp.add_argument('-l', '--list', help='show list of available devices and exit', action='store_true')
+    argp.add_argument('--no-wait', help='no wait on connect or reconnect', action='store_true')
     argp.add_argument('--mqtt-username', help='MQTT username')
     argp.add_argument('--mqtt-password', help='MQTT password')
     argp.add_argument('--mqtt-cafile', help='MQTT cafile')
@@ -401,11 +414,13 @@ def main():
     argp.add_argument('--mqtt-keyfile', help='MQTT keyfile')
     argp.add_argument('-D', '--debug', help='print debug messages', action='store_true')
     argp.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
+    # TODO: remove in future
+    argp.add_argument('-W', '--wait', help=argparse.SUPPRESS, action='store_true')
     args = argp.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format=LOG_FORMAT)
 
-    if args.list:
+    if args.command == 'devices':
         try:
             for p in serial.tools.list_ports.comports():
                 print(p)
@@ -446,7 +461,7 @@ def main():
 
     try:
         gateway = Gateway(config)
-        gateway.start(args.wait)
+        gateway.start(not args.no_wait)
     except KeyboardInterrupt as e:
         return
     except Exception as e:
