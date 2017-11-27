@@ -12,7 +12,7 @@ set -eu
 
 cd "$(dirname "$0")/.."
 . script/utils.sh
-# . ./.envrc
+. ./.envrc
 
 : ${BASE_DIR:="$(pwd)"}
 : ${BUILD_DIR:="$(pwd)/build"}
@@ -131,6 +131,7 @@ build_python3_bcg() {
         --no-python-dependencies \
 		--depends bc-common \
         $(python_depends) \
+        --python-install-bin /usr/local/bin/ \
         setup.py
 
 	cd - >/dev/null
