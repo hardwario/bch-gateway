@@ -1,5 +1,5 @@
 device: /dev/stm32ACM0
-name: "{id}"
+name: "core-module"
 mqtt:
   host: localhost
   port: 1883
