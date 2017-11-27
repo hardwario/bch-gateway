@@ -12,14 +12,14 @@ set -eu
 
 cd "$(dirname "$0")/.."
 . script/utils.sh
-. ./.envrc
+# . ./.envrc
 
 : ${BASE_DIR:="$(pwd)"}
 : ${BUILD_DIR:="$(pwd)/build"}
 : ${TARGET_DIR:="$(pwd)/dist_deb"}
 
-PKG_MAINTAINER='BigClown Labs <support@bigclown.com>'
-PKG_HOMEPAGE='https://github.com/bigclownlabs/bch-usb-gateway'
+PKG_MAINTAINER='HARDWARIO s.r.o. <support@hardwario.com>'
+PKG_HOMEPAGE='https://github.com/bigclownlabs/bch-gateway'
 PKG_LICENSE='MIT'
 
 LIB_DIR='/usr/lib/bigclown'
@@ -36,8 +36,7 @@ _fpm() {
 	# (used in --depends).
 	eval "set -- $@"
 
-	fpm --input-type dir \
-		--output-type deb \
+	fpm --output-type deb \
 		--package "$TARGET_DIR" \
 		--maintainer "$PKG_MAINTAINER" \
 		--vendor "$PKG_MAINTAINER" \
@@ -45,9 +44,6 @@ _fpm() {
 		--license "$PKG_LICENSE" \
 		--version "$PKG_VERSION" \
 		--architecture all \
-		--template-scripts \
-		--after-install "$BASE_DIR"/debian/after-install.erb \
-		--after-upgrade "$BASE_DIR"/debian/after-upgrade.erb \
 		"$@"
 }
 
@@ -85,8 +81,8 @@ build_pip() {
         cp setup.py "$BUILD_DIR"/
         cd "$BUILD_DIR"
     fi
-
     chmod +x bcg/gateway.py
+
 
 	replace_placeholders bcg/gateway.py
     replace_placeholders setup.py
@@ -110,33 +106,62 @@ build_paho_mqtt() {
 		paho-mqtt
 }
 
-build_bc_gateway() {
-	einfo 'Building debian package bc-gateway'
+build_python3_bcg() {
+	einfo 'Building debian package python3_bcg'
 
-	cp -r bcg "$BUILD_DIR"/bc_gateway
-    cp -r config/* "$BUILD_DIR"/bc_gateway
-	cp requirements.txt "$BUILD_DIR/bc_gateway"
-	cd "$BUILD_DIR"/bc_gateway
+	if [ -z "${TRAVIS_BUILD_DIR:-}" ]; then
+        echo "$BUILD_DIR"
+        mkdir -p "$BUILD_DIR"
+    fi
 
-	replace_placeholders *.py
-	chmod +x gateway.py
+    cp -r bcg "$BUILD_DIR"/bcg
+    cp setup.py "$BUILD_DIR"/
+    cp requirements.txt "$BUILD_DIR"/
+    cd "$BUILD_DIR"
 
-	# Prepare symlink
-	ln -s "$GATEWAY_DEST_DIR"/bc-gateway.py bc-gateway
+	replace_placeholders bcg/gateway.py
+    replace_placeholders setup.py
 
-	_fpm --name bc-gateway \
+    _fpm --input-type python \
+		--exclude '**/__pycache__' \
+		--python-bin python3 \
+		--python-package-name-prefix python3 \
+		--python-install-lib /usr/lib/python3/dist-packages \
+        --deb-no-default-config-files \
+        --no-python-dependencies \
 		--depends bc-common \
-		$(python_depends) \
-		--config-files /etc \
-		--deb-systemd bc-gateway.service \
-        --deb-systemd bc-gateway-acm0.service \
-		gateway.py="$GATEWAY_DEST_DIR/bc-gateway.py" \
-		bc-gateway.yml=etc/bigclown/bc-gateway.yml \
-        bc-gateway-acm0.yml=etc/bigclown/bc-gateway-acm0.yml \
-		bc-gateway=/usr/bin/
+        $(python_depends) \
+        setup.py
 
 	cd - >/dev/null
 }
+
+build_bc_gateway_usb_dongle() {
+    einfo 'Building debian package bc-gateway-usb-dongle'
+
+	_fpm --input-type dir \
+        --name bc-gateway-usb-dongle \
+		--depends bc-common --depends python3-bcg \
+		--deb-systemd config/bc-gateway-usb-dongle.service \
+        --template-scripts \
+		--after-install "$BASE_DIR"/debian/after-install.erb \
+		--after-upgrade "$BASE_DIR"/debian/after-upgrade.erb \
+		config/bc-gateway-usb-dongle.yml=etc/bigclown/bc-gateway-usb-dongle.yml
+}
+
+build_bc_gateway_core_module() {
+    einfo 'Building debian package bc-gateway-core-module'
+
+	_fpm --input-type dir \
+        --name bc-gateway-core-module \
+		--depends bc-common --depends python3-bcg \
+		--deb-systemd config/bc-gateway-core-module.service \
+        --template-scripts \
+		--after-install "$BASE_DIR"/debian/after-install.erb \
+		--after-upgrade "$BASE_DIR"/debian/after-upgrade.erb \
+		config/bc-gateway-core-module.yml=etc/bigclown/bc-gateway-core-module.yml
+}
+
 
 #----------  M a i n  ----------#
 
@@ -151,7 +176,9 @@ mkdir -p "$BUILD_DIR" "$TARGET_DIR"
 
 
 build_pip
-# build_paho_mqtt
-build_bc_gateway
+
+build_python3_bcg
+build_bc_gateway_usb_dongle
+build_bc_gateway_core_module
 
 # rm -Rf "$BUILD_DIR"
