@@ -58,6 +58,7 @@ class Gateway:
         self.mqttc = paho.mqtt.client.Client()
         self.mqttc.on_connect = self.mqtt_on_connect
         self.mqttc.on_message = self.mqtt_on_message
+        self.mqttc.on_disconnect = self.mqtt_on_disconnect
         self.mqttc.message_callback_add("gateway/ping", self.gateway_ping)
         self.mqttc.message_callback_add("gateway/all/info/get", self.gateway_all_info_get)
 
@@ -131,7 +132,9 @@ class Gateway:
                     self.node_message(subtopic, talk[1])
 
     def start(self, reconect):
-        self.mqttc.connect(self._config['mqtt']['host'], int(self._config['mqtt']['port']), keepalive=10)
+        logging.info('Start')
+
+        self.mqttc.connect_async(self._config['mqtt']['host'], int(self._config['mqtt']['port']), keepalive=10)
         self.mqttc.loop_start()
 
         while True:
@@ -154,9 +157,23 @@ class Gateway:
 
     def mqtt_on_connect(self, client, userdata, flags, rc):
         logging.info('Connected to MQTT broker with code %s', rc)
-        for topic in self._sub:
-            logging.debug('subscribe %s', topic)
-            client.subscribe(topic)
+
+        lut = {paho.mqtt.client.CONNACK_REFUSED_PROTOCOL_VERSION: 'incorrect protocol version',
+               paho.mqtt.client.CONNACK_REFUSED_IDENTIFIER_REJECTED: 'invalid client identifier',
+               paho.mqtt.client.CONNACK_REFUSED_SERVER_UNAVAILABLE: 'server unavailable',
+               paho.mqtt.client.CONNACK_REFUSED_BAD_USERNAME_PASSWORD: 'bad username or password',
+               paho.mqtt.client.CONNACK_REFUSED_NOT_AUTHORIZED: 'not authorised'}
+
+        if rc != paho.mqtt.client.CONNACK_ACCEPTED:
+            logging.error('Connection refused from reason: %s', lut.get(rc, 'unknown code'))
+
+        if rc == paho.mqtt.client.CONNACK_ACCEPTED:
+            for topic in self._sub:
+                logging.debug('subscribe %s', topic)
+                client.subscribe(topic)
+
+    def mqtt_on_disconnect(self, client, userdata, rc):
+        logging.info('Disconnect from MQTT broker with code %s', rc)
 
     def mqtt_on_message(self, client, userdata, message):
         payload = message.payload.decode('utf-8')
