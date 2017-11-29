@@ -81,7 +81,7 @@ class Gateway:
     def _run(self):
         self.ser = serial.Serial(self._config['device'], baudrate=115200, timeout=3.0)
 
-        logging.info('Opened serial port: %s', config['device'])
+        logging.info('Opened serial port: %s', self._config['device'])
 
         self._ser_error_cnt = 0
 
@@ -89,9 +89,8 @@ class Gateway:
             fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             logging.debug('Exclusive lock on file descriptor: %d' % self.ser.fileno())
 
-        # TODO: update pyserial on raspberry pi
-        # self.ser.reset_input_buffer()
-        # self.ser.reset_output_buffer()
+        self.ser.reset_input_buffer()
+        self.ser.reset_output_buffer()
         self.ser.write(b'\n')
         self.write("/info/get", None)
 
@@ -140,7 +139,7 @@ class Gateway:
                 self._run()
             except serial.serialutil.SerialException as e:
                 if e.errno == 2 and self._ser_error_cnt == 0:
-                    logging.error(e)
+                    logging.error('Could not open port %s' % self._config['device'])
                     self._ser_error_cnt += 1
 
             except Exception as e:
@@ -340,7 +339,7 @@ class Gateway:
         logging.debug('node_rename %s to %s', address, name)
 
         if name in self._node_rename_name:
-            logging.error('name is exists %s to %s', address, name)
+            logging.debug('name is exists %s to %s', address, name)
             return False
 
         old_name = self._node_rename_id.get(address, None)
