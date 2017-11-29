@@ -397,10 +397,29 @@ class Gateway:
             self.sub_add(["gateway", self._name, '+/+'])
 
 
+def command_devices(verbose=False, include_links=False):
+    if os.name == 'nt' or sys.platform == 'win32':
+        from serial.tools.list_ports_windows import comports
+    elif os.name == 'posix':
+        from serial.tools.list_ports_posix import comports
+
+    for port, desc, hwid in sorted(comports(include_links=include_links)):
+        sys.stdout.write("{:20}\n".format(port))
+        if verbose:
+            sys.stdout.write("    desc: {}\n".format(desc))
+            sys.stdout.write("    hwid: {}\n".format(hwid))
+
+
 def main():
     argp = argparse.ArgumentParser(description='BigClown gateway between USB serial port and MQTT broker')
+
+    subparsers = {}
     subparser = argp.add_subparsers(dest='command', metavar='COMMAND')
-    subparser.add_parser('devices', help="show devices")
+
+    subparsers['devices'] = subparser.add_parser('devices', help="show devices")
+    subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')
+    subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices')
+
     argp.add_argument('-c', '--config', help='path to configuration file (YAML format)')
     argp.add_argument('-d', '--device', help='path to gateway serial port (default is /dev/ttyACM0)')
     argp.add_argument('-H', '--mqtt-host', help='MQTT host to connect to (default is localhost)')
@@ -420,13 +439,8 @@ def main():
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format=LOG_FORMAT)
 
     if args.command == 'devices':
-        try:
-            for p in serial.tools.list_ports.comports():
-                print(p)
-            sys.exit(0)
-        except Exception:
-            logging.error('Failed listing available serial ports')
-            sys.exit(1)
+        command_devices(verbose=args.verbose, include_links=args.include_links)
+        return
 
     if args.config:
         try:
