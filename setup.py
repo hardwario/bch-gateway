@@ -9,7 +9,7 @@ setup(
     name='bcg',
     version='@@VERSION@@',
     description='BigClown USB Gateway',
-    author='Hardwario s.r.o.',
+    author='HARDWARIO s.r.o.',
     author_email='karel.blavka@bigclown.com',
     url='https://github.com/bigclownlabs/bch-usb-gateway',
     packages=['bcg'],
@@ -20,7 +20,7 @@ setup(
     zip_safe=False,
     keywords=['BigClown', 'BigClownLabs', 'gateway', 'MQTT'],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'License :: OSI Approved',
         'Operating System :: MacOS :: MacOS X',
@@ -39,6 +39,8 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Topic :: Communications',
         'Topic :: Internet',
+        'Topic :: Utilities',
+        'Environment :: Console'
     ],
     entry_points='''
         [console_scripts]
