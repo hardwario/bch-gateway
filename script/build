@@ -178,8 +178,8 @@ mkdir -p "$BUILD_DIR" "$TARGET_DIR"
 
 build_pip
 
-build_python3_bcg
-build_bc_gateway_usb_dongle
-build_bc_gateway_core_module
+# build_python3_bcg
+# build_bc_gateway_usb_dongle
+# build_bc_gateway_core_module
 
 # rm -Rf "$BUILD_DIR"

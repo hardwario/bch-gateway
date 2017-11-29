@@ -11,11 +11,6 @@ script:
   - "./script/test"
   - "./script/build"
 deploy:
-  - provider: script
-    script: script/travis-deploy
-    skip_cleanup: true
-    on:
-      tags: true
   - provider: pypi
     skip_cleanup: true
     user: bigclownlabs
