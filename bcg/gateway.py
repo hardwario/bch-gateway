@@ -197,8 +197,12 @@ class Gateway:
         self.write(subtopic, payload)
 
     def write(self, topic, payload):
+        if not self.ser:
+            return
+
         if isinstance(topic, list):
             topic = '/'.join(topic)
+
         if topic[0] != '/' or topic[0] == '$':
             i = topic.find('/')
             node_name = topic[:i]
