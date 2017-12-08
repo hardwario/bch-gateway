@@ -245,6 +245,8 @@ class Gateway:
                 for address, name in self._alias_list.items():
                     self.node_rename(address, name)
 
+                self.write("/nodes/get", None)
+
         elif topic == "$eeprom/alias/add/ok":
             self._alias_list[payload] = self._node_rename_id[payload]
 
@@ -269,12 +271,19 @@ class Gateway:
             if self._info["firmware"].startswith("bcf-gateway-core-module"):
                 self.node_add(self._info_id)
 
-            self.write("/nodes/get", None)
             self.write("$eeprom/alias/list", 0)
 
         elif "/nodes" == topic:
-            for address in payload:
-                self.node_add(address)
+            for i, node in enumerate(payload):
+                if not isinstance(node, dict):
+                    node = {"id": node}
+                    payload[i] = node
+
+                self.node_add(node["id"])
+
+                name = self._node_rename_id.get(node["id"], None)
+                if name:
+                    node["alias"] = name
 
         elif "/attach" == topic:
             self.node_add(payload)
