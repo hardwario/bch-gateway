@@ -20,7 +20,7 @@ if platform.system() == 'Linux':
 __version__ = '@@VERSION@@'
 
 config = {
-    'device': '/dev/ttyUSB0',
+    'device': None,
     'mqtt': {
         'host': 'localhost',
         'port': 1883,
@@ -133,6 +133,12 @@ class Gateway:
 
     def start(self, reconect):
         logging.info('Start')
+
+        logging.info('Serial port: %s', self._config['device'])
+        logging.info('MQTT broker host: %s, port: %d, use tls: %s',
+                     self._config['mqtt']['host'],
+                     int(self._config['mqtt']['port']),
+                     bool(self._config['mqtt']['cafile']))
 
         self.mqttc.connect_async(self._config['mqtt']['host'], int(self._config['mqtt']['port']), keepalive=10)
         self.mqttc.loop_start()
@@ -428,12 +434,7 @@ class Gateway:
 
 
 def command_devices(verbose=False, include_links=False):
-    if os.name == 'nt' or sys.platform == 'win32':
-        from serial.tools.list_ports_windows import comports
-    elif os.name == 'posix':
-        from serial.tools.list_ports_posix import comports
-
-    for port, desc, hwid in sorted(comports(include_links=include_links)):
+    for port, desc, hwid in sorted(serial.tools.list_ports.comports(include_links=include_links)):
         sys.stdout.write("{:20}\n".format(port))
         if verbose:
             sys.stdout.write("    desc: {}\n".format(desc))
@@ -441,6 +442,11 @@ def command_devices(verbose=False, include_links=False):
 
 
 def main():
+    devices = sorted(serial.tools.list_ports.comports())
+
+    if devices:
+        config['device'] = devices[0][0]
+
     argp = argparse.ArgumentParser(description='BigClown gateway between USB serial port and MQTT broker')
 
     subparsers = {}
@@ -451,7 +457,9 @@ def main():
     subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices')
 
     argp.add_argument('-c', '--config', help='path to configuration file (YAML format)')
-    argp.add_argument('-d', '--device', help='path to gateway serial port (default is /dev/ttyACM0)')
+    argp.add_argument('-d', '--device',
+                      help='path to gateway serial port' + ' (default is ' + config['device'] + ')' if config['device'] else '',
+                      default=config['device'])
     argp.add_argument('-H', '--mqtt-host', help='MQTT host to connect to (default is localhost)')
     argp.add_argument('-P', '--mqtt-port', help='MQTT port to connect to (default is 1883)')
     argp.add_argument('--no-wait', help='no wait on connect or reconnect', action='store_true')
@@ -462,11 +470,22 @@ def main():
     argp.add_argument('--mqtt-keyfile', help='MQTT keyfile')
     argp.add_argument('-D', '--debug', help='print debug messages', action='store_true')
     argp.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
+
+    subparser_help = subparser.add_parser('help', help="show help")
+    subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
+
     # TODO: remove in future
     argp.add_argument('-W', '--wait', help=argparse.SUPPRESS, action='store_true')
     args = argp.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format=LOG_FORMAT)
+
+    if args.command == 'help':
+        if args.what:
+            subparsers[args.what].print_help()
+        else:
+            argp.print_help()
+        sys.exit()
 
     if args.command == 'devices':
         command_devices(verbose=args.verbose, include_links=args.include_links)
@@ -501,6 +520,12 @@ def main():
     config['mqtt']['cafile'] = args.mqtt_cafile if args.mqtt_cafile else config['mqtt']['cafile']
     config['mqtt']['certfile'] = args.mqtt_certfile if args.mqtt_certfile else config['mqtt']['certfile']
     config['mqtt']['keyfile'] = args.mqtt_keyfile if args.mqtt_keyfile else config['mqtt']['keyfile']
+
+    if not config['device']:
+        argp.print_help()
+        print('error: the following arguments are required: -d/--device')
+        print('tip: for show available devices use command: bcg devices')
+        sys.exit(1)
 
     try:
         gateway = Gateway(config)
