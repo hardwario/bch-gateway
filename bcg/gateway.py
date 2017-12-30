@@ -30,7 +30,7 @@ config = {
         'certfile': None,
         'keyfile': None,
     },
-    'base_topic_prefix': '', # ie. 'bigclown-'
+    'base_topic_prefix': '',  # ie. 'bigclown-'
     'name': None,
     'automatic_rename_kit_nodes': True,
     'rename': {}
