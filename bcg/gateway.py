@@ -32,6 +32,7 @@ config = {
     },
     'name': None,
     'automatic_rename_kit_nodes': True,
+    'automatic_rename_generic_nodes': True,
     'rename': {}
 }
 
@@ -227,9 +228,9 @@ class Gateway:
 
     def log_message(self, line):
         logging.debug('log_message %s', line)
-        if self._info_id:
+        if self._name:
             level_char = line[line.find("<") + 1]
-            self.publish(['log', self._info_id, log_level_lut[level_char]], line[1:].strip())
+            self.publish(['log', self._name, log_level_lut[level_char]], line[1:].strip())
 
     def gateway_ping(self, *args):
         if self._name:
@@ -315,15 +316,22 @@ class Gateway:
             raise
             logging.error('Failed to publish MQTT message: %s, %s', subtopic, payload)
 
-        if self._config['automatic_rename_kit_nodes'] and subtopic[i:] == '/info' and 'firmware' in payload:
-            if node_ide not in self._node_rename_id:
-                if payload['firmware'].startswith("kit-"):
-                    name_base = payload['firmware']
-                    for i in range(0, 32):
-                        name = name_base + ':' + str(i)
-                        if name not in self._node_rename_name:
-                            self.node_rename(node_ide, name)
-                            return
+        if self._config['automatic_rename_kit_nodes'] or self._config['automatic_rename_generic_nodes']:
+            if subtopic[i:] == '/info' and 'firmware' in payload:
+                if node_ide not in self._node_rename_id:
+                    name_base = None
+
+                    if self._config['automatic_rename_kit_nodes'] and payload['firmware'].startswith("kit-"):
+                        name_base = payload['firmware']
+                    elif self._config['automatic_rename_generic_nodes'] and payload['firmware'].startswith("generic-node"):
+                        name_base = 'generic-node'
+
+                    if name_base:
+                        for i in range(0, 32):
+                            name = name_base + ':' + str(i)
+                            if name not in self._node_rename_name:
+                                self.node_rename(node_ide, name)
+                                return
 
     def sub_add(self, topic):
         if isinstance(topic, list):
@@ -462,7 +470,7 @@ def main():
                       default=config['device'])
     argp.add_argument('-H', '--mqtt-host', help='MQTT host to connect to (default is localhost)')
     argp.add_argument('-P', '--mqtt-port', help='MQTT port to connect to (default is 1883)')
-    argp.add_argument('--no-wait', help='no wait on connect or reconnect', action='store_true')
+    argp.add_argument('--no-wait', help='no wait on connect or reconnect serial port', action='store_true')
     argp.add_argument('--mqtt-username', help='MQTT username')
     argp.add_argument('--mqtt-password', help='MQTT password')
     argp.add_argument('--mqtt-cafile', help='MQTT cafile')
@@ -523,7 +531,7 @@ def main():
 
     if not config['device']:
         argp.print_help()
-        print('error: the following arguments are required: -d/--device')
+        print('error: the following arguments are required: -d/--device or -c/--config')
         print('tip: for show available devices use command: bcg devices')
         sys.exit(1)
 
