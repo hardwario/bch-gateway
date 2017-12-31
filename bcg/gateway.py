@@ -452,11 +452,6 @@ def command_devices(verbose=False, include_links=False):
 
 
 def main():
-    devices = sorted(serial.tools.list_ports.comports())
-
-    if devices:
-        config['device'] = devices[0][0]
-
     argp = argparse.ArgumentParser(description='BigClown gateway between USB serial port and MQTT broker')
 
     subparsers = {}
@@ -467,9 +462,7 @@ def main():
     subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices')
 
     argp.add_argument('-c', '--config', help='path to configuration file (YAML format)')
-    argp.add_argument('-d', '--device',
-                      help='path to gateway serial port' + ' (default is ' + config['device'] + ')' if config['device'] else '',
-                      default=config['device'])
+    argp.add_argument('-d', '--device', help='device', required='-c' not in sys.argv and '--config' not in sys.argv)
     argp.add_argument('-H', '--mqtt-host', help='MQTT host to connect to (default is localhost)')
     argp.add_argument('-P', '--mqtt-port', help='MQTT port to connect to (default is 1883)')
     argp.add_argument('--no-wait', help='no wait on connect or reconnect serial port', action='store_true')
@@ -519,7 +512,8 @@ def main():
 
         except Exception as e:
             logging.error('Failed opening configuration file')
-            raise e
+            if os.getenv('DEBUG', False):
+                raise e
             sys.exit(1)
 
     config['device'] = args.device if args.device else config['device']
@@ -546,6 +540,7 @@ def main():
         logging.error(e)
         if os.getenv('DEBUG', False):
             raise e
+        sys.exit(1)
 
 
 if __name__ == '__main__':
