@@ -278,6 +278,8 @@ class Gateway:
             if self._info["firmware"].startswith("bcf-gateway-core-module"):
                 self.node_add(self._info_id)
 
+            self.node_rename(self._info_id, self._name)
+
             self.write("$eeprom/alias/list", 0)
 
         elif "/nodes" == topic:
