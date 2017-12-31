@@ -441,6 +441,101 @@ def command_devices(verbose=False, include_links=False):
             sys.stdout.write("    hwid: {}\n".format(hwid))
 
 
+def _init_serial(device):
+    ser = serial.Serial(device, baudrate=115200, timeout=3.0)
+
+    if platform.system() == 'Linux':
+        fcntl.flock(ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        logging.debug('Exclusive lock on file descriptor: %d' % ser.fileno())
+
+    ser.reset_input_buffer()
+    ser.reset_output_buffer()
+    ser.write(b'\n')
+
+    return ser
+
+
+def _write_json_to_serial(ser, data):
+    line = json.dumps(data, use_decimal=True) + '\n'
+    line = line.encode('utf-8')
+    logging.debug("write %s", line)
+    ser.write(line)
+
+
+def _read_json_from_serial(ser):
+    result = None
+
+    try:
+        line = ser.readline()
+    except serial.SerialException:
+        ser.close()
+        raise
+
+    if line:
+        logging.debug("read %s", line)
+
+        line = line.decode()
+
+        try:
+            result = json.loads(line, parse_float=decimal.Decimal)
+            if len(result) != 2:
+                raise Exception
+        except Exception:
+            logging.error('Invalid JSON message received from serial port: %s', line)
+
+    return result
+
+
+def command_nodes(device):
+    sys.stdout.write("Paired nodes on {}:\n".format(device))
+
+    ser = _init_serial(device)
+    _write_json_to_serial(ser, ["/info/get", None])
+
+    was_alias_list_asked = False
+    was_alias_list_sent_back = False
+
+    while not was_alias_list_sent_back:
+        data = _read_json_from_serial(ser)
+
+        if not data:
+            continue
+
+        topic = data[0]
+        if topic == "/info":
+            _write_json_to_serial(ser, ["$eeprom/alias/list", 0])
+            was_alias_list_asked = True
+        elif was_alias_list_asked and topic == "$eeprom/alias/list/0":
+            was_alias_list_sent_back = True
+
+            payload = data[1]
+            for key in payload.keys():
+                sys.stdout.write("    {}: {}\n".format(key, payload[key]))
+
+
+def command_rename_node(device, id, name):
+    ser = _init_serial(device)
+    _write_json_to_serial(ser, ["/info/get", None])
+
+    was_rename_requested = False
+    was_rename_responded = False
+
+    while not was_rename_responded:
+        data = _read_json_from_serial(ser)
+
+        if not data:
+            continue
+
+        topic = data[0]
+        if topic == "/info":
+            was_rename_requested = True
+            _write_json_to_serial(ser, ['$eeprom/alias/add', {'id': id, 'name': name}])
+        elif topic == "$eeprom/alias/add/ok":
+            was_rename_responded = True
+
+    sys.stdout.write("Node with id {} renamed to {} on {}\n".format(id, name, device))
+
+
 def main():
     devices = sorted(serial.tools.list_ports.comports())
 
@@ -455,6 +550,12 @@ def main():
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
     subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')
     subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices')
+
+    subparsers['nodes'] = subparser.add_parser('nodes', help="show paired nodes")
+
+    subparsers['rename-node'] = subparser.add_parser('rename-node', help="show paired nodes")
+    subparsers['rename-node'].add_argument('id', help='id of node')
+    subparsers['rename-node'].add_argument('name', help='new name for node')
 
     argp.add_argument('-c', '--config', help='path to configuration file (YAML format)')
     argp.add_argument('-d', '--device',
@@ -489,6 +590,14 @@ def main():
 
     if args.command == 'devices':
         command_devices(verbose=args.verbose, include_links=args.include_links)
+        return
+
+    if args.command == 'nodes':
+        command_nodes(device=config['device'])
+        return
+
+    if args.command == 'rename-node':
+        command_rename_node(device=config['device'], id=args.id, name=args.name)
         return
 
     if args.config:
