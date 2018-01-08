@@ -32,6 +32,7 @@ start_service() {
     append gateway name 'name:' core-module
 	append gateway device 'device:' /dev/ttyACM0
 	append gateway automatic_rename_kit_nodes 'automatic_rename_kit_nodes:' 1
+	append gateway base_topic_prefix 'base_topic_prefix:'
 
 	echo "mqtt:" >> $CONF
 

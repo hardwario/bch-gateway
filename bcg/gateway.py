@@ -30,6 +30,7 @@ config = {
         'certfile': None,
         'keyfile': None,
     },
+    'base_topic_prefix': '',  # ie. 'bigclown-'
     'name': None,
     'automatic_rename_kit_nodes': True,
     'automatic_rename_generic_nodes': True,
@@ -60,8 +61,8 @@ class Gateway:
         self.mqttc.on_connect = self.mqtt_on_connect
         self.mqttc.on_message = self.mqtt_on_message
         self.mqttc.on_disconnect = self.mqtt_on_disconnect
-        self.mqttc.message_callback_add("gateway/ping", self.gateway_ping)
-        self.mqttc.message_callback_add("gateway/all/info/get", self.gateway_all_info_get)
+        self.mqttc.message_callback_add(config['base_topic_prefix'] + "gateway/ping", self.gateway_ping)
+        self.mqttc.message_callback_add(config['base_topic_prefix'] + "gateway/all/info/get", self.gateway_all_info_get)
 
         self.mqttc.username_pw_set(config['mqtt']['username'], config['mqtt']['password'])
         if config['mqtt']['cafile']:
@@ -177,20 +178,21 @@ class Gateway:
         if rc == paho.mqtt.client.CONNACK_ACCEPTED:
             for topic in self._sub:
                 logging.debug('subscribe %s', topic)
-                client.subscribe(topic)
+                client.subscribe(self._config['base_topic_prefix'] + topic)
 
     def mqtt_on_disconnect(self, client, userdata, rc):
         logging.info('Disconnect from MQTT broker with code %s', rc)
 
     def mqtt_on_message(self, client, userdata, message):
         payload = message.payload.decode('utf-8')
+        topic = message.topic[len(self._config['base_topic_prefix']):]
 
         logging.debug('mqtt_on_message %s %s', message.topic, message.payload)
 
-        if message.topic.startswith("gateway"):
-            subtopic = message.topic[8 + len(self._name):]
+        if topic.startswith("gateway"):
+            subtopic = topic[8 + len(self._name):]
         else:
-            subtopic = message.topic[5:]
+            subtopic = topic[5:]
 
         if payload == '':
             payload = 'null'
@@ -224,7 +226,7 @@ class Gateway:
     def publish(self, topic, payload):
         if isinstance(topic, list):
             topic = '/'.join(topic)
-        self.mqttc.publish(topic, json.dumps(payload, use_decimal=True), qos=1)
+        self.mqttc.publish(self._config['base_topic_prefix'] + topic, json.dumps(payload, use_decimal=True), qos=1)
 
     def log_message(self, line):
         logging.debug('log_message %s', line)
@@ -312,7 +314,7 @@ class Gateway:
             if node_name:
                 subtopic = node_name + subtopic[i:]
 
-            self.mqttc.publish("node/" + subtopic, json.dumps(payload, use_decimal=True), qos=1)
+            self.mqttc.publish(self._config['base_topic_prefix'] + "node/" + subtopic, json.dumps(payload, use_decimal=True), qos=1)
 
         except Exception:
             raise
@@ -341,7 +343,7 @@ class Gateway:
         if topic not in self._sub:
             logging.debug('subscribe %s', topic)
             self._sub.update([topic])
-            self.mqttc.subscribe(topic)
+            self.mqttc.subscribe(self._config['base_topic_prefix'] + topic)
 
     def sub_remove(self, topic):
         if isinstance(topic, list):
@@ -349,7 +351,7 @@ class Gateway:
         if topic in self._sub:
             logging.debug('unsubscribe %s', topic)
             self._sub.remove(topic)
-            self.mqttc.unsubscribe(topic)
+            self.mqttc.unsubscribe(self._config['base_topic_prefix'] + topic)
 
     def node_add(self, address):
         logging.debug('node_add %s', address)
