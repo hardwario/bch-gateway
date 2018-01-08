@@ -268,7 +268,9 @@ class Gateway:
             if 'address' in payload:
                 payload['id'] = payload['address']
                 del payload['address']
-
+            if payload['id'] == '000000000000':
+                self.write("/info/get", None)
+                return
             self._info_id = payload['id']
             self._info = payload
             self._rename()
