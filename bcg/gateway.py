@@ -51,7 +51,7 @@ class Gateway:
         self._name = None
         self._info = None
         self._info_id = None
-        self._sub = set(['gateway/ping', 'gateway/all/info/get'])
+        self._sub = set([config['base_topic_prefix'] + 'gateway/ping', config['base_topic_prefix'] + 'gateway/all/info/get'])
         self._nodes = set([])
 
         self._ser_error_cnt = 0
@@ -189,11 +189,6 @@ class Gateway:
 
         logging.debug('mqtt_on_message %s %s', message.topic, message.payload)
 
-        if topic.startswith("gateway"):
-            subtopic = topic[8 + len(self._name):]
-        else:
-            subtopic = topic[5:]
-
         if payload == '':
             payload = 'null'
 
@@ -202,6 +197,19 @@ class Gateway:
         except Exception as e:
             logging.error('parse json ' + str(message.topic) + ' ' + str(message.payload) + ' ' + str(e))
             return
+
+        if topic.startswith("gateway"):
+            subtopic = topic[8 + len(self._name):]
+            if subtopic == '/alias/set':
+                if "id" in payload and "alias" in payload:
+                    self.node_rename(payload["id"], payload["alias"])
+                return
+            elif subtopic == '/alias/remove':
+                if payload:
+                    self.node_rename(payload, None)
+                return
+        else:
+            subtopic = topic[5:]
 
         self.write(subtopic, payload)
 
@@ -275,14 +283,10 @@ class Gateway:
             self._info = payload
             self._rename()
 
-            # TODO: remove in the future
-            if self._info["firmware"].startswith("bcf-usb-gateway"):
+            if self._info["firmware"].startswith("bcf-gateway-core-module") or self._info["firmware"].startswith("bcf-usb-gateway"):
+                self._node_rename_id[self._info_id] = self._name
+                self._node_rename_name[self._name] = self._info_id
                 self.node_add(self._info_id)
-
-            if self._info["firmware"].startswith("bcf-gateway-core-module"):
-                self.node_add(self._info_id)
-
-            self.node_rename(self._info_id, self._name)
 
             self.write("$eeprom/alias/list", 0)
 
@@ -397,14 +401,26 @@ class Gateway:
         if old_name:
             self.sub_remove(['node', old_name, '+/+/+/+'])
 
-        self._node_rename_id[address] = name
-        self._node_rename_name[name] = address
+        if name:
+            self._node_rename_id[address] = name
+            self._node_rename_name[name] = address
 
-        if address in self._nodes:
-            self.sub_add(['node', name, '+/+/+/+'])
+            if address in self._nodes:
+                self.sub_add(['node', name, '+/+/+/+'])
 
-        if address not in self._alias_list or self._alias_list[address] != name:
-            self.write('$eeprom/alias/add', {'id': address, 'name': name})
+            if address not in self._alias_list or self._alias_list[address] != name:
+                self.write('$eeprom/alias/add', {'id': address, 'name': name})
+
+        else:
+
+            if old_name:
+                del self._node_rename_id[address]
+                del self._node_rename_name[old_name]
+
+            self.sub_add(['node', address, '+/+/+/+'])
+
+            if address in self._alias_list:
+                self.write('$eeprom/alias/remove', address)
 
         # if 'config_file' in self._config:
         #     with open(self._config['config_file'], 'r') as f:

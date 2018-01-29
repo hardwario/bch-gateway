@@ -112,6 +112,19 @@ It works with Python 2.7+ and Python 3.5+ environments and it has been tested un
     gateway/{name}/detach "{id-node}"
     ```
 
+* Set node alias
+  ```
+  mosquitto_pub -t 'gateway/usb-dongle/alias/set' -m '{"id": "id-node", "alias": "new-name"}'
+  ```
+
+* Remove node alias
+  ```
+  mosquitto_pub -t 'gateway/usb-dongle/alias/remove' -m '"{id-node}"'
+  ```
+  ```
+  mosquitto_pub -t 'gateway/usb-dongle/alias/set' -m '{"id": "id-node", "alias": null}'
+  ```
+
 * Scan Start
 
   * Start
