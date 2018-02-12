@@ -46,6 +46,8 @@ class Gateway:
     def __init__(self, config):
         self._config = config
         self._alias_list = {}
+        self._alias_action = {}
+
         self._node_rename_id = config['rename'].copy()
         self._node_rename_name = {v: k for k, v in config['rename'].items()}
         self._name = None
@@ -77,6 +79,8 @@ class Gateway:
         self._info = None
         self._rename()
         self._alias_list = {}
+        self._alias_action = {}
+
         for address in list(self._nodes):
             self.node_remove(address)
         self.gateway_all_info_get()
@@ -264,11 +268,15 @@ class Gateway:
 
                 self.write("/nodes/get", None)
 
-        elif topic == "$eeprom/alias/add/ok":
-            self._alias_list[payload] = self._node_rename_id[payload]
+        if topic == "$eeprom/alias/add/ok":
+            if self._alias_action[payload] == 'add':
+                del self._alias_action[payload]
+            self._alias_action_next()
 
         elif topic == "$eeprom/alias/remove/ok":
-            self._alias_list.pop(payload, None)
+            if self._alias_action[payload] == 'remove':
+                del self._alias_action[payload]
+            self._alias_action_next()
 
     def gateway_message(self, topic, payload):
         if "/info" == topic:
@@ -382,7 +390,7 @@ class Gateway:
             self.sub_remove(['node', name, '+/+/+/+'])
 
             if address in self._alias_list and self._alias_list[address] == name:
-                self.write('$eeprom/alias/remove', address)
+                self._alias_remove(address)
 
             if address not in self._config['rename']:
                 self._node_rename_id.pop(address, None)
@@ -419,8 +427,7 @@ class Gateway:
 
             self.sub_add(['node', address, '+/+/+/+'])
 
-            if address in self._alias_list:
-                self.write('$eeprom/alias/remove', address)
+            self._alias_remove(address)
 
         # if 'config_file' in self._config:
         #     with open(self._config['config_file'], 'r') as f:
@@ -430,6 +437,40 @@ class Gateway:
         #         yaml.safe_dump(config_yaml, f, indent=2, default_flow_style=False)
 
         return True
+
+    def _alias_add(self, address, alias):
+        if address in self._alias_list or self._alias_list[address] == name:
+            return
+
+        self._alias_list[address] = alias
+
+        self._alias_action[address] = 'add'
+
+        if len(self._alias_action) == 1:
+            self.write('$eeprom/alias/add', {'id': address, 'name': name})
+
+    def _alias_remove(self, address):
+        if address not in self._alias_list:
+            return
+
+        del self._alias_list[payload]
+
+        self._alias_action[address] = 'remove'
+
+        if len(self._alias_action) == 1:
+            self.write('$eeprom/alias/remove', address)
+
+    def _alias_acction_next(self):
+        if not self._alias_action:
+            return
+        for address in self._alias_action:
+            action = self._alias_action[address]
+            if action == 'add':
+                name = self._alias_list[address]
+                self.write('$eeprom/alias/add', {'id': address, 'name': name})
+            else:
+                self.write('$eeprom/alias/remove', address)
+            return
 
     def _rename(self):
         if self._name:
