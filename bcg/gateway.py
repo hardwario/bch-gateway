@@ -271,11 +271,13 @@ class Gateway:
         if topic == "$eeprom/alias/add/ok":
             if self._alias_action[payload] == 'add':
                 del self._alias_action[payload]
+                self.publish(["gateway", self._name, "alias/set/ok"], {'id': payload, 'alias': self._alias_list.get(payload, None)})
             self._alias_action_next()
 
         elif topic == "$eeprom/alias/remove/ok":
             if self._alias_action[payload] == 'remove':
                 del self._alias_action[payload]
+                self.publish(["gateway", self._name, "alias/remove/ok"], {'id': payload, 'alias': self._alias_list.get(payload, None)})
             self._alias_action_next()
 
     def gateway_message(self, topic, payload):
@@ -368,9 +370,9 @@ class Gateway:
             self.mqttc.unsubscribe(self._config['base_topic_prefix'] + topic)
 
     def node_add(self, address):
-        logging.debug('node_add %s', address)
         if address in self._nodes:
             return
+        logging.debug('node_add %s', address)
         self._nodes.update([address])
         self.sub_add(['node', address, '+/+/+/+'])
         name = self._node_rename_id.get(address, None)
@@ -408,6 +410,7 @@ class Gateway:
 
         if old_name:
             self.sub_remove(['node', old_name, '+/+/+/+'])
+            del self._node_rename_name[old_name]
 
         if name:
             self._node_rename_id[address] = name
@@ -417,13 +420,12 @@ class Gateway:
                 self.sub_add(['node', name, '+/+/+/+'])
 
             if address not in self._alias_list or self._alias_list[address] != name:
-                self.write('$eeprom/alias/add', {'id': address, 'name': name})
+                self._alias_add(address, name)
 
         else:
 
             if old_name:
                 del self._node_rename_id[address]
-                del self._node_rename_name[old_name]
 
             self.sub_add(['node', address, '+/+/+/+'])
 
@@ -439,7 +441,7 @@ class Gateway:
         return True
 
     def _alias_add(self, address, alias):
-        if address in self._alias_list or self._alias_list[address] == name:
+        if address in self._alias_list and self._alias_list[address] == alias:
             return
 
         self._alias_list[address] = alias
@@ -447,20 +449,20 @@ class Gateway:
         self._alias_action[address] = 'add'
 
         if len(self._alias_action) == 1:
-            self.write('$eeprom/alias/add', {'id': address, 'name': name})
+            self.write('$eeprom/alias/add', {'id': address, 'name': alias})
 
     def _alias_remove(self, address):
         if address not in self._alias_list:
             return
 
-        del self._alias_list[payload]
+        del self._alias_list[address]
 
         self._alias_action[address] = 'remove'
 
         if len(self._alias_action) == 1:
             self.write('$eeprom/alias/remove', address)
 
-    def _alias_acction_next(self):
+    def _alias_action_next(self):
         if not self._alias_action:
             return
         for address in self._alias_action:
