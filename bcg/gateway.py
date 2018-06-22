@@ -34,6 +34,7 @@ config = {
     'name': None,
     'automatic_rename_kit_nodes': True,
     'automatic_rename_generic_nodes': True,
+    'automatic_rename_nodes': True,
     'rename': {}
 }
 
@@ -55,6 +56,8 @@ class Gateway:
         self._info_id = None
         self._sub = set([config['base_topic_prefix'] + 'gateway/ping', config['base_topic_prefix'] + 'gateway/all/info/get'])
         self._nodes = set([])
+
+        self._auto_rename_nodes = self._config['automatic_rename_nodes'] or self._config['automatic_rename_kit_nodes'] or self._config['automatic_rename_generic_nodes']
 
         self._ser_error_cnt = 0
         self.ser = None
@@ -336,15 +339,17 @@ class Gateway:
             raise
             logging.error('Failed to publish MQTT message: %s, %s', subtopic, payload)
 
-        if self._config['automatic_rename_kit_nodes'] or self._config['automatic_rename_generic_nodes']:
+        if self._auto_rename_nodes:
             if subtopic[i:] == '/info' and 'firmware' in payload:
                 if node_ide not in self._node_rename_id:
                     name_base = None
 
-                    if self._config['automatic_rename_kit_nodes'] and payload['firmware'].startswith("kit-"):
-                        name_base = payload['firmware']
-                    elif self._config['automatic_rename_generic_nodes'] and payload['firmware'].startswith("generic-node"):
+                    if self._config['automatic_rename_generic_nodes'] and payload['firmware'].startswith("generic-node"):
                         name_base = 'generic-node'
+                    elif self._config['automatic_rename_nodes']:
+                        name_base = payload['firmware']
+                    elif self._config['automatic_rename_kit_nodes'] and payload['firmware'].startswith("kit-"):
+                        name_base = payload['firmware']
 
                     if name_base:
                         for i in range(0, 32):
