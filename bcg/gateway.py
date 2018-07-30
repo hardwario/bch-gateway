@@ -13,11 +13,15 @@ import yaml
 import serial
 import serial.tools.list_ports
 import paho.mqtt.client
+from distutils.version import LooseVersion
 
 if platform.system() == 'Linux':
     import fcntl
 
+
 __version__ = '@@VERSION@@'
+
+pyserial_34 = LooseVersion(serial.VERSION) >= LooseVersion("3.4.0")
 
 config = {
     'device': None,
@@ -512,7 +516,19 @@ class Gateway:
 
 
 def command_devices(verbose=False, include_links=False):
-    for port, desc, hwid in sorted(serial.tools.list_ports.comports(include_links=include_links)):
+    if os.name == 'nt' or sys.platform == 'win32':
+        from serial.tools.list_ports_windows import comports
+    elif os.name == 'posix':
+        from serial.tools.list_ports_posix import comports
+
+    if pyserial_34:
+        ports = comports(include_links=include_links)
+    else:
+        ports = comports()
+
+    sorted(ports)
+
+    for port, desc, hwid in ports:
         sys.stdout.write("{:20}\n".format(port))
         if verbose:
             sys.stdout.write("    desc: {}\n".format(desc))
@@ -527,7 +543,7 @@ def main():
 
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
     subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')
-    subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices')
+    subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices' if pyserial_34 else argparse.SUPPRESS)
 
     argp.add_argument('-c', '--config', help='path to configuration file (YAML format)')
     argp.add_argument('-d', '--device', help='device')
