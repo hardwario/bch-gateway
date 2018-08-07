@@ -36,7 +36,7 @@ config = {
     },
     'base_topic_prefix': '',  # ie. 'bigclown-'
     'name': None,
-    'automatic_rename_kit_nodes': True,
+    'automatic_remove_kit_from_names': True,
     'automatic_rename_generic_nodes': True,
     'automatic_rename_nodes': True,
     'rename': {}
@@ -352,8 +352,9 @@ class Gateway:
                         name_base = 'generic-node'
                     elif self._config['automatic_rename_nodes']:
                         name_base = payload['firmware']
-                    elif self._config['automatic_rename_kit_nodes'] and payload['firmware'].startswith("kit-"):
-                        name_base = payload['firmware']
+
+                        if self._config['automatic_remove_kit_from_names'] and name_base.startswith("kit-"):
+                            name_base = name_base[4:]
 
                     if name_base:
                         for i in range(0, 32):
