@@ -2,8 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
+from os import path
 
-requirements = ['paho-mqtt>=1.0', 'pyserial>=3.0', 'PyYAML>=3.11', 'simplejson>=3.6.0']
+this_directory = path.abspath(path.dirname(__file__))
+
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
+
+with open('requirements.txt', 'r') as f:
+    requirements = f.read()
 
 setup(
     name='bcg',
@@ -12,20 +19,14 @@ setup(
     author='HARDWARIO s.r.o.',
     author_email='karel.blavka@bigclown.com',
     url='https://github.com/bigclownlabs/bch-usb-gateway',
-    packages=['bcg'],
-    package_dir={'': '.'},
-    include_package_data=True,
-    install_requires=requirements,
+    packages=find_packages(),
     license='MIT',
-    zip_safe=False,
     keywords=['BigClown', 'BigClownLabs', 'gateway', 'MQTT'],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
-        'License :: OSI Approved',
-        'Operating System :: MacOS :: MacOS X',
-        'Operating System :: Microsoft :: Windows',
-        'Operating System :: POSIX',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
         'Natural Language :: English',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
@@ -42,53 +43,12 @@ setup(
         'Topic :: Utilities',
         'Environment :: Console'
     ],
-    entry_points='''
-        [console_scripts]
-        bcg=bcg.gateway:main
-    ''',
-    long_description="""
-BigClown gateway between USB and MQTT broker.
-
-Documentation is here https://www.bigclown.com/doc/tools/bcg/
-
-
-usage: bcg [-h] [-c CONFIG] [-d DEVICE] [-H MQTT_HOST] [-P MQTT_PORT]
-           [--no-wait] [--mqtt-username MQTT_USERNAME]
-           [--mqtt-password MQTT_PASSWORD] [--mqtt-cafile MQTT_CAFILE]
-           [--mqtt-certfile MQTT_CERTFILE] [--mqtt-keyfile MQTT_KEYFILE] [-D]
-           [-v]
-           COMMAND ...
-
-BigClown gateway between USB serial port and MQTT broker
-
-positional arguments:
-  COMMAND
-    devices             show devices
-    help                show help
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -c CONFIG, --config CONFIG
-                        path to configuration file (YAML format)
-  -d DEVICE, --device DEVICE
-                        device
-  -H MQTT_HOST, --mqtt-host MQTT_HOST
-                        MQTT host to connect to (default is localhost)
-  -P MQTT_PORT, --mqtt-port MQTT_PORT
-                        MQTT port to connect to (default is 1883)
-  --no-wait             no wait on connect or reconnect serial port
-  --mqtt-username MQTT_USERNAME
-                        MQTT username
-  --mqtt-password MQTT_PASSWORD
-                        MQTT password
-  --mqtt-cafile MQTT_CAFILE
-                        MQTT cafile
-  --mqtt-certfile MQTT_CERTFILE
-                        MQTT certfile
-  --mqtt-keyfile MQTT_KEYFILE
-                        MQTT keyfile
-  -D, --debug           print debug messages
-  -v, --version         show program's version number and exit
-
-"""
+    install_requires=requirements,
+    entry_points={
+        'console_scripts': [
+            'bcg=bcg:main'
+        ]
+    },
+    long_description=long_description,
+    long_description_content_type='text/markdown'
 )
