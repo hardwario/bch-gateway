@@ -5,6 +5,7 @@
 [![Travis](https://img.shields.io/travis/bigclownlabs/bch-gateway/master.svg)](https://travis-ci.org/bigclownlabs/bch-gateway)
 [![Release](https://img.shields.io/github/release/bigclownlabs/bch-gateway.svg)](https://github.com/bigclownlabs/bch-gateway/releases)
 [![License](https://img.shields.io/github/license/bigclownlabs/bch-gateway.svg)](https://github.com/bigclownlabs/bch-gateway/blob/master/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/bcg.svg)](https://pypi.org/project/bcg/)
 [![Twitter](https://img.shields.io/twitter/follow/BigClownLabs.svg?style=social&label=Follow)](https://twitter.com/BigClownLabs)
 
 This repository contains CLI service for BigClown USB Gateway.
@@ -15,6 +16,18 @@ The service connects to a serial port where BigClown USB Gateway is connected.
 It converts messages from serial port to MQTT broker and vice versa.
 Run with `--help` parameter to see the available options.
 It works with Python 2.7+ and Python 3.5+ environments and it has been tested under Linux, macOS and Windows.
+
+## Setup
+
+    pip3 install -U bcg
+
+Install as a system-wide local Python package.
+
+    git clone https://github.com/bigclownlabs/bch-gateway.git
+    cd bch-gateway
+    sudo pip3 install -e .
+
+> Note: Parameter `-e` instructs to install files as symlinks, so changes to the source files will be immediately available to other users of the package on the host.
 
 
 ## MQTT
