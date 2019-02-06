@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+# -*- coding: utf-8 -*-
 import os
 import time
 import logging
@@ -42,9 +42,9 @@ class Gateway:
         self.mqttc.message_callback_add(config['base_topic_prefix'] + "gateway/ping", self.gateway_ping)
         self.mqttc.message_callback_add(config['base_topic_prefix'] + "gateway/all/info/get", self.gateway_all_info_get)
 
-        self.mqttc.username_pw_set(config['mqtt']['username'], config['mqtt']['password'])
-        if config['mqtt']['cafile']:
-            self.mqttc.tls_set(config['mqtt']['cafile'], config['mqtt']['certfile'], config['mqtt']['keyfile'])
+        self.mqttc.username_pw_set(config['mqtt'].get('username'), config['mqtt'].get('password'))
+        if config['mqtt'].get('cafile'):
+            self.mqttc.tls_set(config['mqtt'].get('cafile'), config['mqtt'].get('certfile'), config['mqtt'].get('keyfile'))
 
         self._rename()
 
@@ -120,7 +120,7 @@ class Gateway:
         logging.info('MQTT broker host: %s, port: %d, use tls: %s',
                      self._config['mqtt']['host'],
                      int(self._config['mqtt']['port']),
-                     bool(self._config['mqtt']['cafile']))
+                     bool(self._config['mqtt'].get('cafile')))
 
         self.mqttc.connect_async(self._config['mqtt']['host'], int(self._config['mqtt']['port']), keepalive=10)
         self.mqttc.loop_start()
@@ -459,7 +459,7 @@ class Gateway:
 
         self._name = None
 
-        name = self._config['name']
+        name = self._config.get('name')
 
         if name:
             if "{ip}" in name:
