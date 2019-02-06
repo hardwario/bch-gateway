@@ -1,4 +1,7 @@
+Click>=6.0
+click-log>=0.2.1
 paho-mqtt>=1.0     # deb:python3-paho-mqtt>=1.0
 pyserial>=3.0      # deb:python3-serial>=3.0
 PyYAML>=3.11       # deb:python3-yaml>=3.11
 simplejson>=3.6.0  # deb:python3-simplejson>=3.6.0
+schema>=0.6
