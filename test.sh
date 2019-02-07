@@ -58,4 +58,5 @@ einfo 'Test codestyle'
 python3 -m pycodestyle --ignore=E501 bcg
 
 einfo 'Test setup.py'
+python3 -m bcg.config
 python3 setup.py test
