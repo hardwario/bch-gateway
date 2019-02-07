@@ -10,6 +10,7 @@ import decimal
 import yaml
 import serial
 import paho.mqtt.client
+import appdirs
 
 if platform.system() == 'Linux':
     import fcntl
@@ -25,10 +26,12 @@ class Gateway:
         self._node_rename_id = config['rename'].copy()
         self._node_rename_name = {v: k for k, v in config['rename'].items()}
         self._name = None
+        self._data_dir = None
+        self._cache_nodes = {}
         self._info = None
         self._info_id = None
         self._sub = set([config['base_topic_prefix'] + 'gateway/ping', config['base_topic_prefix'] + 'gateway/all/info/get'])
-        self._nodes = set([])
+        self._nodes = {}
 
         self._auto_rename_nodes = self._config['automatic_rename_nodes'] or self._config['automatic_rename_kit_nodes'] or self._config['automatic_rename_generic_nodes']
 
@@ -57,7 +60,7 @@ class Gateway:
         self._alias_list = {}
         self._alias_action = {}
 
-        for address in list(self._nodes):
+        for address in self._nodes.keys():
             self.node_remove(address)
         self.gateway_all_info_get()
 
@@ -87,6 +90,12 @@ class Gateway:
             if line:
                 logging.debug("read %s", line)
 
+                if line[0] == 0:
+                    i = 1
+                    while line[i] == 0 and i < len(line):
+                        i += 1
+                    line = line[i:]
+
                 line = line.decode()
 
                 if line[0] == '#':
@@ -98,7 +107,7 @@ class Gateway:
                     if len(talk) != 2:
                         raise Exception
                 except Exception:
-                    logging.error('Invalid JSON message received from serial port: %s', line)
+                    logging.warning('Invalid JSON message received from serial port: %s', line)
                     if self._info is None:
                         self.write("/info/get", None)
                     continue
@@ -280,13 +289,19 @@ class Gateway:
             for i, node in enumerate(payload):
                 if not isinstance(node, dict):
                     node = {"id": node}
-                    payload[i] = node
 
                 self.node_add(node["id"])
 
                 name = self._node_rename_id.get(node["id"], None)
                 if name:
                     node["alias"] = name
+
+                info = self._nodes[node["id"]].get('info')
+                if info:
+                    node['firmware'] = info.get('firmware')
+                    node['version'] = info.get('version')
+
+                payload[i] = node
 
         elif "/attach" == topic:
             self.node_add(payload)
@@ -298,13 +313,13 @@ class Gateway:
             self.publish(["gateway", self._name, topic[1:]], payload)
 
     def node_message(self, subtopic, payload):
-        i = subtopic.find('/')
-        node_ide = subtopic[:i]
+
+        node_ide, topic = subtopic.split('/', 1)
 
         try:
             node_name = self._node_rename_id.get(node_ide, None)
             if node_name:
-                subtopic = node_name + subtopic[i:]
+                subtopic = node_name + '/' + topic
 
             self.mqttc.publish(self._config['base_topic_prefix'] + "node/" + subtopic, json.dumps(payload, use_decimal=True), qos=1)
 
@@ -312,8 +327,15 @@ class Gateway:
             raise
             logging.error('Failed to publish MQTT message: %s, %s', subtopic, payload)
 
-        if self._auto_rename_nodes:
-            if subtopic[i:] == '/info' and 'firmware' in payload:
+        logging.debug('topic %s', topic)
+
+        if topic == 'info' and 'firmware' in payload:
+
+            self._nodes[node_ide]['info'] = payload
+
+            self._save_nodes_json()
+
+            if self._auto_rename_nodes:
                 if node_ide not in self._node_rename_id:
                     name_base = None
 
@@ -352,7 +374,12 @@ class Gateway:
         if address in self._nodes:
             return
         logging.debug('node_add %s', address)
-        self._nodes.update([address])
+        self._nodes[address] = {}
+        if address in self._cache_nodes:
+            info = self._cache_nodes[address].get('info')
+            if info:
+                self._nodes[address]['info'] = info
+
         self.sub_add(['node', address, '+/+/+/+'])
         name = self._node_rename_id.get(address, None)
         if name:
@@ -363,7 +390,7 @@ class Gateway:
         if address not in self._nodes:
             logging.debug('address not in self._nodes %s', address)
             return
-        self._nodes.remove(address)
+        del self._nodes[address]
         self.sub_remove(['node', address, '+/+/+/+'])
 
         name = self._node_rename_id.get(address, None)
@@ -458,6 +485,8 @@ class Gateway:
             self.sub_remove(["gateway", self._name, '+/+'])
 
         self._name = None
+        self._data_dir = None
+        self._cache_nodes = {}
 
         name = self._config.get('name')
 
@@ -479,7 +508,28 @@ class Gateway:
         elif name is None and self._info and 'firmware' in self._info:
             name = self._info['firmware'].replace('bcf-gateway-', '', 1)
             name = name.split(':', 1)[0]
+
         self._name = name
 
         if name:
+            self._data_dir = appdirs.user_data_dir('bcg-' + self._name)
+
+            logging.debug('data_dir=%s', self._data_dir)
+
+            os.makedirs(self._data_dir, exist_ok=True)
+
+            try:
+                self._cache_nodes = json.load(open(os.path.join(self._data_dir, 'nodes.json')))
+            except Exception as e:
+                pass
+
             self.sub_add(["gateway", self._name, '+/+'])
+
+    def _save_nodes_json(self):
+        if not self._data_dir:
+            return
+
+        try:
+            json.dump(self._nodes, open(os.path.join(self._data_dir, 'nodes.json'), 'w', encoding="utf-8"))
+        except Exception as e:
+            logging.warning(str(e))
