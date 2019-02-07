@@ -59,7 +59,7 @@ fi
 
 ls -lha
 
-set_version bcg/gateway.py
+set_version bcg/__init__.py
 set_version setup.py
 
 python3 setup.py sdist
