@@ -14,6 +14,7 @@ DEFAULT = {
     },
     'base_topic_prefix': '',  # ie. 'bigclown-'
     'automatic_remove_kit_from_names': True,
+    'automatic_rename_kit_nodes': True,
     'automatic_rename_generic_nodes': True,
     'automatic_rename_nodes': True,
     'rename': {}
@@ -37,9 +38,10 @@ schema = Schema({
         Optional('keyfile'): And(str, len, os.path.exists),
     },
     Optional('base_topic_prefix'): str,  # ie. 'bigclown-'
-    Optional('automatic_remove_kit_from_names'): bool,
-    Optional('automatic_rename_generic_nodes'): bool,
-    Optional('automatic_rename_nodes'): bool,
+    Optional('automatic_remove_kit_from_names'): Use(bool),
+    Optional('automatic_rename_kit_nodes'): Use(bool),
+    Optional('automatic_rename_generic_nodes'): Use(bool),
+    Optional('automatic_rename_nodes'): Use(bool),
     Optional('rename'): {}
 })
 
@@ -50,10 +52,7 @@ def load_config(config_file):
         try:
             config = schema.validate(config)
         except SchemaError as e:
-            # Better error format
-            error = str(e).splitlines()
-            del error[1]
-            raise Exception(' '.join(error))
+            raise Exception('Load Config: ' + str(e))
 
     elif config_file is None:
         config = {}
