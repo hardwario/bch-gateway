@@ -30,7 +30,7 @@ class Gateway:
         self._cache_nodes = {}
         self._info = None
         self._info_id = None
-        self._sub = set([config['base_topic_prefix'] + 'gateway/ping', config['base_topic_prefix'] + 'gateway/all/info/get'])
+        self._sub = set(['gateway/ping', 'gateway/all/info/get'])
         self._nodes = {}
 
         self._auto_rename_nodes = self._config['automatic_rename_nodes'] or self._config['automatic_rename_kit_nodes'] or self._config['automatic_rename_generic_nodes']
