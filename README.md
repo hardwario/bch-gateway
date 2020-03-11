@@ -1,18 +1,18 @@
-<a href="https://www.bigclown.com/"><img src="https://bigclown.sirv.com/logo.png" width="200" alt="BigClown Logo" align="right"></a>
+<a href="https://www.hardwario.com/"><img src="https://www.hardwario.com/ci/assets/hw-logo.svg" width="200" alt="HARDWARIO Logo" align="right"></a>
 
-# Hub Service for BigClown USB Gateway
+# Hub Service for HARDWARIO USB Gateway
 
 [![Travis](https://img.shields.io/travis/bigclownlabs/bch-gateway/master.svg)](https://travis-ci.org/bigclownlabs/bch-gateway)
 [![Release](https://img.shields.io/github/release/bigclownlabs/bch-gateway.svg)](https://github.com/bigclownlabs/bch-gateway/releases)
 [![License](https://img.shields.io/github/license/bigclownlabs/bch-gateway.svg)](https://github.com/bigclownlabs/bch-gateway/blob/master/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/bcg.svg)](https://pypi.org/project/bcg/)
-[![Twitter](https://img.shields.io/twitter/follow/BigClownLabs.svg?style=social&label=Follow)](https://twitter.com/BigClownLabs)
+[![Twitter](https://img.shields.io/twitter/follow/hardwario_en.svg?style=social&label=Follow)](https://twitter.com/hardwario_en)
 
-This repository contains CLI service for BigClown USB Gateway.
+This repository contains CLI service for HARDWARIO USB Gateway.
 
 ## Introduction
 
-The service connects to a serial port where BigClown USB Gateway is connected.
+The service connects to a serial port where HARDWARIO USB Gateway is connected.
 It converts messages from serial port to MQTT broker and vice versa.
 Run with `--help` parameter to see the available options.
 It works with Python 2.7+ and Python 3.5+ environments and it has been tested under Linux, macOS and Windows.
