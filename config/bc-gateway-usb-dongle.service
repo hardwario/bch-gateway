@@ -1,5 +1,6 @@
 [Unit]
 Description=BigClown gateway between Base unit connected via USB and MQTT broker
+StartLimitIntervalSec=0
 After=network.target
 
 [Service]
