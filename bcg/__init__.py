@@ -27,11 +27,12 @@ log_level_lut = {'D': 'debug', 'I': 'info', 'W': 'warning', 'E': 'error'}
 @click.option('--mqtt-cafile', help='MQTT cafile')
 @click.option('--mqtt-certfile', help='MQTT certfile')
 @click.option('--mqtt-keyfile', help='MQTT keyfile')
+@click.option('--retain-node-messages', is_flag=True, help='Set the MQTT retain flag for messages received from nodes')
 @click_log.simple_verbosity_option(default='INFO')
 @click.option('--debug', '-D', is_flag=True, help='Print debug messages, same as --verbosity DEBUG.')
 @click.version_option(version=__version__)
 @click.pass_context
-def cli(ctx, config_file, device, mqtt_host, mqtt_port, no_wait, mqtt_username, mqtt_password, mqtt_cafile, mqtt_certfile, mqtt_keyfile, debug):
+def cli(ctx, config_file, device, mqtt_host, mqtt_port, no_wait, mqtt_username, mqtt_password, mqtt_cafile, mqtt_certfile, mqtt_keyfile, retain_node_messages, debug):
     '''BigClown gateway between USB serial port and MQTT broker'''
 
     if debug:
@@ -65,6 +66,9 @@ def cli(ctx, config_file, device, mqtt_host, mqtt_port, no_wait, mqtt_username, 
 
     if mqtt_keyfile:
         config['mqtt']['keyfile'] = mqtt_keyfile
+
+    if retain_node_messages:
+        config['retain'] = retain_node_messages
 
     if not config.get('device', None):
         click.echo('The following arguments are required: -d/--device or -c/--config')

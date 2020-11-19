@@ -45,6 +45,8 @@ class Gateway:
         self.mqttc.message_callback_add(config['base_topic_prefix'] + "gateway/ping", self.gateway_ping)
         self.mqttc.message_callback_add(config['base_topic_prefix'] + "gateway/all/info/get", self.gateway_all_info_get)
 
+        self._retain = config.get('retain', False)
+
         self.mqttc.username_pw_set(config['mqtt'].get('username'), config['mqtt'].get('password'))
         if config['mqtt'].get('cafile'):
             self.mqttc.tls_set(config['mqtt'].get('cafile'), config['mqtt'].get('certfile'), config['mqtt'].get('keyfile'))
@@ -321,7 +323,7 @@ class Gateway:
             if node_name:
                 subtopic = node_name + '/' + topic
 
-            self.mqttc.publish(self._config['base_topic_prefix'] + "node/" + subtopic, json.dumps(payload, use_decimal=True), qos=1)
+            self.mqttc.publish(self._config['base_topic_prefix'] + "node/" + subtopic, json.dumps(payload, use_decimal=True), qos=1, retain=self._retain)
 
         except Exception:
             raise
