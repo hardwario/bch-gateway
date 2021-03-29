@@ -67,11 +67,11 @@
 
 2. Download configuration
 
-        wget "https://raw.githubusercontent.com/bigclownlabs/bch-gateway/master/turris/etc/config/bc-gateway-core-module" -O /etc/config/bc-gateway-core-modul
+        wget "https://raw.githubusercontent.com/bigclownlabs/bch-gateway/master/turris/etc/config/bc-gateway-core-module" -O /etc/config/bc-gateway-core-module
 
 3. Make sure the configuration works
 
-        uci show bc-gateway-core-modul
+        uci show bc-gateway-core-module
 
 4. Download Init Script
 
