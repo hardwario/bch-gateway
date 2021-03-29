@@ -31,13 +31,18 @@ start_service() {
 
     append gateway name 'name:' core-module
 	append gateway device 'device:' /dev/ttyACM0
+	append gateway automatic_remove_kit_from_names 'automatic_remove_kit_from_names:' 1
 	append gateway automatic_rename_kit_nodes 'automatic_rename_kit_nodes:' 1
+	append gateway automatic_rename_generic_nodes 'automatic_rename_generic_nodes:' 1
+	append gateway automatic_rename_nodes 'automatic_rename_nodes:' 1
 	append gateway base_topic_prefix 'base_topic_prefix:'
 
 	echo "mqtt:" >> $CONF
 
 	append mqtt host '  host:' localhost
 	append mqtt port '  port:' 1883
+	append mqtt username '  username:'
+	append mqtt password '  password:'
 	append mqtt cafile '  cafile:'
 	append mqtt certfile '  certfile:'
 	append mqtt keyfile '  keyfile:'
