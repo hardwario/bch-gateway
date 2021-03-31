@@ -1,11 +1,9 @@
 sudo: false
 language: python
-python: 3.4
 env:
   global:
   - secure: YtzZ7Na630DH3ogAgAR4bGtja0NT+/SHLFs0jRt6XlPoxqta69vmAbUTHfGTNqaBJxoXO2ADOPOQBcjOVhZHVL0obq0nzvEFuxBVVtQFjFbeTSP51nS05vr5YOLrX2Envv4wJ81GFWL2cb6fzcXG+LwqdGBf3XqfKfy+jyyybD4TTxgq0ulOPcWLvjk3eFhjlNMfcVuIPG+98piwIKTgdFaICAF+9xDvdJquXTmzu3+VPwxnzBTFp2hR9eem3M1WGkjAQWGB4j6UAyaudAegiGQ26syX1Znl+NegvV2vB+d5gE5OgzfMaM2P27vJhLOQUXbVzuHk39q8iQhfIVmZvWxuGV7lYNvW3w/ksm9ovNpOwhx5q4j59kUY7uK8wWmvaSEALfKyuNs6+0phvAPIU4Z7XsieT8tiWszNik+Wgwdd/MPmwW9HqoRNnBSLpAXPSCmjblMKKsf360a9JP0Yf0zmbjuA7Twd+fsQP5SY+QuVMCFhWhilPJLtqYtn7bv70dnzRvdqERMN0xUpWf6MUZ/h6M44m0T0o0jtV2s3dSwGb/2BPyPJNdSJ6qqKtkDcJMdWPmiRPiCYaRuxSzTMw8qMNzJmjLcGSW3tZE5zl4/uMlblThiogNLYvw9u6IUkvBww6kxBm4RLsSxEP3EzaIE0HmU/W5cr0Bf9HRe5dXc=
 install:
-  - gem install --no-ri --no-rdoc fpm
   - pip3 install --upgrade pip
 script:
   - "./test.sh"
