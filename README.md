@@ -212,6 +212,12 @@ Install as a system-wide local Python package.
 
 ## Configuration file
 
+Configuration file is in yaml format
+
+* device: string
+
+  example: /dev/ttyUSB0
+
 * name: string
 
   support variables:
@@ -221,6 +227,52 @@ Install as a system-wide local Python package.
   default: null - automatic detect name from gateway firmware
 
   example: "{ip}-ttyUSB0"
+
+* mqtt: object
+
+  * host: string
+
+    default: 127.0.0.1
+
+  * port: int
+
+    defualt: 1883
+
+  * username: string
+  * password: string
+  * cafile: string
+  * certfile: string
+  * keyfile: string
+
+* retain_node_messages: bool
+
+  default: False
+
+* qos_node_messages: int
+
+  default: 1
+    
+* base_topic_prefix: string
+
+  example: home-
+
+* automatic_remove_kit_from_names: bool
+
+  default: True
+
+* automatic_rename_kit_nodes: bool
+
+  default: True
+  
+* automatic_rename_generic_nodes: bool
+
+  default: True
+  
+* automatic_rename_nodes: bool
+
+  default: True
+  
+* rename: object
 
 ## Node-Red buttons
 
