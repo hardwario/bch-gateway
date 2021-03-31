@@ -12,7 +12,9 @@ DEFAULT = {
         'host': '127.0.0.1',
         'port': 1883,
     },
-    'base_topic_prefix': '',  # ie. 'bigclown-'
+    'retain_node_messages': False,
+    'qos_node_messages': 1,
+    'base_topic_prefix': '',  # ie. 'home-'
     'automatic_remove_kit_from_names': True,
     'automatic_rename_kit_nodes': True,
     'automatic_rename_generic_nodes': True,
@@ -37,7 +39,9 @@ schema = Schema({
         Optional('certfile'): And(str, len, os.path.exists),
         Optional('keyfile'): And(str, len, os.path.exists),
     },
-    Optional('base_topic_prefix'): str,  # ie. 'bigclown-'
+    Optional('retain_node_messages'): Use(bool),
+    Optional('qos_node_messages'): And(int, lambda qos: 0 <= qos <= 2),
+    Optional('base_topic_prefix'): str,  # ie. 'home-'
     Optional('automatic_remove_kit_from_names'): Use(bool),
     Optional('automatic_rename_kit_nodes'): Use(bool),
     Optional('automatic_rename_generic_nodes'): Use(bool),

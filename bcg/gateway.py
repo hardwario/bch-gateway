@@ -45,7 +45,8 @@ class Gateway:
         self.mqttc.message_callback_add(config['base_topic_prefix'] + "gateway/ping", self.gateway_ping)
         self.mqttc.message_callback_add(config['base_topic_prefix'] + "gateway/all/info/get", self.gateway_all_info_get)
 
-        self._retain = config.get('retain', False)
+        self._msg_retain = config['retain_node_messages']
+        self._msg_qos = config['qos_node_messages']
 
         self.mqttc.username_pw_set(config['mqtt'].get('username'), config['mqtt'].get('password'))
         if config['mqtt'].get('cafile'):
@@ -323,7 +324,7 @@ class Gateway:
             if node_name:
                 subtopic = node_name + '/' + topic
 
-            self.mqttc.publish(self._config['base_topic_prefix'] + "node/" + subtopic, json.dumps(payload, use_decimal=True), qos=1, retain=self._retain)
+            self.mqttc.publish(self._config['base_topic_prefix'] + "node/" + subtopic, json.dumps(payload, use_decimal=True), qos=self._msg_qos, retain=self._msg_retain)
 
         except Exception:
             raise
