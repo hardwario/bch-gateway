@@ -1,0 +1,15 @@
+[Unit]
+Description=BigClown gateway between Base unit connected via USB (/dev/%I) and MQTT broker
+StartLimitIntervalSec=0
+StopWhenUnneeded=true
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/bcg --no-wait -d /dev/%I -c /etc/bigclown/bc-gateway-usb-dongle.yml
+User=root
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+
