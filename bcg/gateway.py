@@ -3,7 +3,7 @@
 import os
 import time
 import logging
-import simplejson as json
+import json
 import platform
 import socket
 import decimal
