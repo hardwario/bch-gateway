@@ -1,8 +1,8 @@
 [Unit]
-Description=BigClown gateway between Base unit connected via USB (/dev/%I) and MQTT broker
+Description=BigClown gateway between radio dongle connected via USB (/dev/%I) and MQTT broker
 StartLimitIntervalSec=0
 StopWhenUnneeded=true
-After=network.target
+After=network.target mosquitto.service
 
 [Service]
 ExecStart=/usr/local/bin/bcg --no-wait -d /dev/%I -c /etc/bigclown/bc-gateway-usb-dongle.yml
