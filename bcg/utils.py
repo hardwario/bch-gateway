@@ -5,7 +5,7 @@ import sys
 import serial
 import click
 import platform
-from distutils.version import LooseVersion
+from  looseversion import LooseVersion
 
 pyserial_34 = LooseVersion(serial.VERSION) >= LooseVersion("3.4.0")
 

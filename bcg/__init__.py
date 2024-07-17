@@ -4,7 +4,6 @@ import sys
 import os
 import click
 import click_log
-from distutils.version import LooseVersion
 import logging
 from bcg.gateway import Gateway
 from bcg.utils import *
