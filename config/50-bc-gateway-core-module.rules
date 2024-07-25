@@ -1,0 +1,1 @@
+SUBSYSTEMS=="usb", ACTION=="add", KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", ATTRS{serial}=="hio-core-module*", SYMLINK+="bcCore%n", TAG+="systemd", ENV{SYSTEMD_ALIAS}="/dev/bcCore%n", ENV{SYSTEMD_WANTS}="bc-gateway-core-module@bcCore%n.service"
