@@ -5,3 +5,4 @@ pyserial>=3.0      # deb:python3-serial>=3.0
 PyYAML>=3.11       # deb:python3-yaml>=3.11
 schema>=0.6
 appdirs>=1.0
+looseversion
