@@ -11,9 +11,24 @@ import yaml
 import serial
 import paho.mqtt.client
 import appdirs
+from collections.abc import Mapping, Iterable
 
 if platform.system() == 'Linux':
     import fcntl
+
+
+# https://stackoverflow.com/a/60243503/1076564
+class DecimalJSONEncoder(json.JSONEncoder):
+    """Add support for encoding Decimal"""
+    def encode(self, obj):
+        if isinstance(obj, Mapping):
+            return '{' + ', '.join(f'{self.encode(k)}: {self.encode(v)}' for (k, v) in obj.items()) + '}'
+        if isinstance(obj, Iterable) and (not isinstance(obj, str)):
+            return '[' + ', '.join(map(self.encode, obj)) + ']'
+        if isinstance(obj, decimal.Decimal):
+            # using normalize() gets rid of trailing 0s, using ':f' prevents scientific notation
+            return f'{obj.normalize():f}'
+        return super().encode(obj)
 
 
 class Gateway:
@@ -218,7 +233,7 @@ class Gateway:
             node_id = self._node_rename_name.get(node_name, None)
             if node_id:
                 topic = node_id + topic[i:]
-        line = json.dumps([topic, payload], use_decimal=True) + '\n'
+        line = json.dumps([topic, payload], cls=DecimalJSONEncoder) + '\n'
         line = line.encode('utf-8')
         logging.debug("write %s", line)
         self.ser.write(line)
@@ -226,7 +241,7 @@ class Gateway:
     def publish(self, topic, payload):
         if isinstance(topic, list):
             topic = '/'.join(topic)
-        self.mqttc.publish(self._config['base_topic_prefix'] + topic, json.dumps(payload, use_decimal=True), qos=1)
+        self.mqttc.publish(self._config['base_topic_prefix'] + topic, json.dumps(payload, cls=DecimalJSONEncoder), qos=1)
 
     def log_message(self, line):
         logging.debug('log_message %s', line)
@@ -324,7 +339,7 @@ class Gateway:
             if node_name:
                 subtopic = node_name + '/' + topic
 
-            self.mqttc.publish(self._config['base_topic_prefix'] + "node/" + subtopic, json.dumps(payload, use_decimal=True), qos=self._msg_qos, retain=self._msg_retain)
+            self.mqttc.publish(self._config['base_topic_prefix'] + "node/" + subtopic, json.dumps(payload, cls=DecimalJSONEncoder), qos=self._msg_qos, retain=self._msg_retain)
 
         except Exception:
             raise
